@@ -30,7 +30,8 @@ import {
   SelectTrigger,
 } from "../components/ui/select";
 import { Avatar, AvatarFallback } from "../components/ui/avatar";
-import { Plus, Search, Edit, Trash2, Eye } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Eye, Mail, Phone, FileText, DollarSign } from "lucide-react";
+import { formatCurrency } from "../utils/formatCurrency";
 import { useNavigate } from "react-router-dom";
 import * as kv from "../utils/supabase/kv_store";
 import { Student } from "../types";
@@ -58,7 +59,9 @@ const StudentsPage: React.FC = () => {
     address: "",
   });
 
-  const [selectedStudent, setSelectedStudent] = useState(null as Student | null);
+  const [selectedStudent, setSelectedStudent] = useState(
+    null as Student | null
+  );
   const navigate = useNavigate();
 
   const goToFees = (student: Student) => {
@@ -67,6 +70,33 @@ const StudentsPage: React.FC = () => {
 
   const goToRecords = (student: Student) => {
     navigate(`/students/${encodeURIComponent(student.id)}/records`);
+  };
+
+  const [studentFeeTotals, setStudentFeeTotals] = useState<{ total: number; paid: number; pending: number; overdue: number } | null>(null);
+
+  const statusIsActive = (s?: string | null) => {
+    return (s || "Active").toLowerCase() === "active";
+  };
+
+  const loadStudentFeeTotals = async (studentId: string) => {
+    try {
+      const feesData = await kv.getByPrefix("fee:");
+      const studentFees = (feesData || []).filter((f: any) => f.studentId === studentId);
+      const totals = studentFees.reduce(
+        (acc: any, f: any) => {
+          acc.total += f.amount || 0;
+          if (f.status === "paid") acc.paid += f.amount || 0;
+          if (f.status === "pending") acc.pending += f.amount || 0;
+          if (f.status === "overdue") acc.overdue += f.amount || 0;
+          return acc;
+        },
+        { total: 0, paid: 0, pending: 0, overdue: 0 }
+      );
+      setStudentFeeTotals(totals);
+    } catch (err) {
+      console.error(err);
+      setStudentFeeTotals(null);
+    }
   };
 
   useEffect(() => {
@@ -202,9 +232,26 @@ const StudentsPage: React.FC = () => {
 
   const handleView = (student: Student) => {
     setSelectedStudent(student);
+    loadStudentFeeTotals(student.id);
   };
 
   const closeProfile = () => setSelectedStudent(null);
+
+  const toggleStatus = async (student: Student) => {
+    try {
+      const current = (student as any).status || "Active";
+      const newStatus =
+        current.toLowerCase() === "active" ? "inactive" : "active";
+      const updated = { ...student, status: newStatus } as Student;
+      await kv.set(student.id, updated);
+      setSelectedStudent(updated);
+      await loadStudents();
+      toast.success("Status updated");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to update status");
+    }
+  };
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -565,99 +612,380 @@ const StudentsPage: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      <Tilt>
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search students..."
-                  className="pl-9"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <Tilt>
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-4">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Search students..."
+                      className="pl-9"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Code</TableHead>
+                      <TableHead>Student</TableHead>
+                      <TableHead>Roll No.</TableHead>
+                      <TableHead>Class</TableHead>
+                      <TableHead>Guardian</TableHead>
+                      <TableHead>Contact</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredStudents.map((student) => (
+                      <TableRow key={student.id}>
+                        <TableCell>{student.studentCode || "—"}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar>
+                              {student.avatar ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={student.avatar}
+                                  alt={`${student.name} avatar`}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <AvatarFallback>
+                                  {student.name?.charAt(0) || "?"}
+                                </AvatarFallback>
+                              )}
+                            </Avatar>
+                            <div>
+                              <p>{student.name}</p>
+                              <p className="text-muted-foreground">
+                                {student.email}
+                              </p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{student.rollNumber}</TableCell>
+                        <TableCell>{student.classId}</TableCell>
+                        <TableCell>{student.guardianName}</TableCell>
+                        <TableCell>{student.guardianPhone}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleView(student)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEdit(student)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete(student.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </Tilt>
+        </div>
+
+        <div className="hidden lg:block">
+          {selectedStudent ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Student Profile</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col items-center gap-4">
+                  <Avatar>
+                    {selectedStudent.avatar ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={selectedStudent.avatar}
+                        alt={`${selectedStudent.name} avatar`}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <AvatarFallback>
+                        {selectedStudent.name?.charAt(0) || "?"}
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+
+                  <div className="text-center">
+                    <h3 className="text-lg font-semibold">
+                      {selectedStudent.name}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedStudent.studentCode}
+                    </p>
+                  </div>
+
+                  <div className="w-full space-y-2">
+                    <div className="flex justify-between text-sm items-center">
+                        <span className="text-muted-foreground">Status</span>
+                        <span className="inline-flex items-center gap-2">
+                          <span
+                            className={`w-2 h-2 rounded-full ${statusIsActive((selectedStudent as any).status) ? "bg-emerald-500" : "bg-rose-500"}`}
+                            aria-hidden
+                          />
+                          <span className="font-medium capitalize">
+                            {(selectedStudent as any).status || "Active"}
+                          </span>
+                        </span>
+                      </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Class</span>
+                      <span className="font-medium">
+                        {selectedStudent.classId || "-"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Roll No.</span>
+                      <span className="font-medium">
+                        {selectedStudent.rollNumber || "-"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Email</span>
+                      <span className="font-medium">
+                        {selectedStudent.email || "-"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Guardian</span>
+                      <span className="font-medium">
+                        {selectedStudent.guardianName || "-"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Contact</span>
+                      <span className="font-medium">
+                        {selectedStudent.guardianPhone || "-"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Enrolled</span>
+                      <span className="font-medium">
+                        {new Date(
+                          selectedStudent.enrollmentDate || Date.now()
+                        ).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="w-full flex justify-between pt-4">
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        handleEdit(selectedStudent);
+                      }}
+                    >
+                      Edit
+                    </Button>
+                    <div className="flex gap-2">
+                      <Button variant="outline" onClick={closeProfile}>
+                        Close
+                      </Button>
+                      <Button onClick={() => goToFees(selectedStudent)}>
+                        Fees
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => goToRecords(selectedStudent)}
+                      >
+                        Records
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle>Student Profile</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-muted-foreground text-sm">
+                  Select a student to view profile and status.
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
+
+      {/* Profile modal (opens when selectedStudent is set) */}
+      <Dialog
+        open={Boolean(selectedStudent)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedStudent(null);
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Student Profile</DialogTitle>
+          </DialogHeader>
+          {selectedStudent && (
+            <div className="space-y-4">
+              <div className="flex justify-center">
+                <div className="w-36 h-36 rounded-full overflow-hidden border bg-muted/5">
+                  {selectedStudent.avatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={selectedStudent.avatar}
+                      alt={`${selectedStudent.name} avatar`}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center w-full h-full text-3xl text-muted-foreground">
+                      {selectedStudent.name?.charAt(0) || "?"}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="text-center">
+                <h3 className="text-xl font-semibold">{selectedStudent.name}</h3>
+                <p className="text-sm text-muted-foreground">{selectedStudent.studentCode}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-sm text-muted-foreground">Status</div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className={`inline-block w-3 h-3 rounded-full ${statusIsActive((selectedStudent as any).status) ? "bg-emerald-500" : "bg-rose-500"}`} />
+                    <span className="font-medium capitalize">{(selectedStudent as any).status || "Active"}</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Class</div>
+                  <div className="mt-1">
+                    <span className="inline-block px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 text-sm font-medium">{selectedStudent.classId || "-"}</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Roll No.</div>
+                  <div className="mt-1">
+                    <span className="inline-block px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 text-sm font-medium">{selectedStudent.rollNumber || "-"}</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Enrolled</div>
+                  <div className="mt-1">
+                    <span className="inline-block px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 text-sm font-medium">{new Date(selectedStudent.enrollmentDate || Date.now()).toLocaleDateString()}</span>
+                  </div>
+                </div>
+                <div className="col-span-2">
+                  <div className="text-sm text-muted-foreground">Email</div>
+                  <div className="mt-1">
+                    <a className="text-sm text-primary hover:underline" href={`mailto:${selectedStudent.email || ""}`}>{selectedStudent.email || "-"}</a>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Guardian</div>
+                  <div className="mt-1">
+                    <span className="text-sm font-medium">{selectedStudent.guardianName || "-"}</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Contact</div>
+                  <div className="mt-1">
+                    {selectedStudent.guardianPhone ? (
+                      <a className="text-sm text-primary hover:underline" href={`tel:${selectedStudent.guardianPhone}`}>{selectedStudent.guardianPhone}</a>
+                    ) : (
+                      <span className="text-sm font-medium">-</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={() => {
+                    setSelectedStudent(null);
+                    goToFees(selectedStudent);
+                  }}
+                >
+                  Fees
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedStudent(null);
+                    goToRecords(selectedStudent);
+                  }}
+                >
+                  Records
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    window.location.href = `mailto:${
+                      selectedStudent.email || ""
+                    }`;
+                  }}
+                >
+                  Email
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    if (selectedStudent.guardianPhone)
+                      window.location.href = `tel:${selectedStudent.guardianPhone}`;
+                  }}
+                >
+                  Call Guardian
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => toggleStatus(selectedStudent)}
+                >
+                  Toggle Status
+                </Button>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setSelectedStudent(null);
+                    handleEdit(selectedStudent);
+                  }}
+                >
+                  Edit
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setSelectedStudent(null)}
+                >
+                  Close
+                </Button>
               </div>
             </div>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Student</TableHead>
-                  <TableHead>Roll No.</TableHead>
-                  <TableHead>Class</TableHead>
-                  <TableHead>Guardian</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredStudents.map((student) => (
-                  <TableRow key={student.id}>
-                    <TableCell>{student.studentCode || "—"}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar>
-                          {student.avatar ? (
-                            // show image when available
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={student.avatar}
-                              alt={`${student.name} avatar`}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <AvatarFallback>
-                              {student.name?.charAt(0) || "?"}
-                            </AvatarFallback>
-                          )}
-                        </Avatar>
-                        <div>
-                          <p>{student.name}</p>
-                          <p className="text-muted-foreground">
-                            {student.email}
-                          </p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>{student.rollNumber}</TableCell>
-                    <TableCell>{student.classId}</TableCell>
-                    <TableCell>{student.guardianName}</TableCell>
-                    <TableCell>{student.guardianPhone}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleView(student)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(student)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(student.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </Tilt>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
