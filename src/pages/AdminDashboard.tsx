@@ -32,7 +32,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import * as kv from "../utils/supabase/kv_store";
+import * as kv from "../utils/backend/api";
 
 const performanceData = [
   { month: "Jan", score: 75 },

@@ -18,7 +18,7 @@ import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { TrendingUp, TrendingDown, CheckCircle } from "lucide-react";
 import CediSign from "../components/icons/CediSign";
-import * as kv from "../utils/supabase/kv_store";
+import * as kv from "../utils/backend/api";
 import { Fee } from "../types";
 import { toast } from "sonner";
 import { formatCurrency } from "../utils/formatCurrency";
@@ -103,11 +103,11 @@ export const FeesPage: React.FC = () => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "paid":
-        return <Badge className="bg-green-600">Paid</Badge>;
+        return <Badge variant="success">Paid</Badge>;
       case "pending":
-        return <Badge className="bg-yellow-600">Pending</Badge>;
+        return <Badge variant="warning">Pending</Badge>;
       case "overdue":
-        return <Badge variant="destructive">Overdue</Badge>;
+        return <Badge variant="danger">Overdue</Badge>;
       default:
         return <Badge>{status}</Badge>;
     }

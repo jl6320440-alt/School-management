@@ -30,13 +30,24 @@ import {
   SelectTrigger,
 } from "../components/ui/select";
 import { Avatar, AvatarFallback } from "../components/ui/avatar";
-import { Plus, Search, Edit, Trash2, Eye, Mail, Phone, FileText, DollarSign } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Edit,
+  Trash2,
+  Eye,
+  Mail,
+  Phone,
+  FileText,
+  DollarSign,
+} from "lucide-react";
+import { Badge } from "../components/ui/badge";
 import { formatCurrency } from "../utils/formatCurrency";
 import { useNavigate } from "react-router-dom";
-import * as kv from "../utils/supabase/kv_store";
+import * as kv from "../utils/backend/api";
 import { Student } from "../types";
 import { toast } from "sonner";
-import { supabase } from "../utils/supabase/client";
+
 
 const StudentsPage: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
@@ -45,8 +56,11 @@ const StudentsPage: React.FC = () => {
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
   const previousPreviewRef = useRef<string | null>(null);
   const [step, setStep] = useState<number>(0); // 0=bio,1=review,2=photo
+
+  const DRAFT_KEY = "student:draft:v1";
 
   const [formData, setFormData] = useState({
     name: "",
@@ -72,7 +86,12 @@ const StudentsPage: React.FC = () => {
     navigate(`/students/${encodeURIComponent(student.id)}/records`);
   };
 
-  const [studentFeeTotals, setStudentFeeTotals] = useState<{ total: number; paid: number; pending: number; overdue: number } | null>(null);
+  const [studentFeeTotals, setStudentFeeTotals] = useState<{
+    total: number;
+    paid: number;
+    pending: number;
+    overdue: number;
+  } | null>(null);
 
   const statusIsActive = (s?: string | null) => {
     return (s || "Active").toLowerCase() === "active";
@@ -81,7 +100,9 @@ const StudentsPage: React.FC = () => {
   const loadStudentFeeTotals = async (studentId: string) => {
     try {
       const feesData = await kv.getByPrefix("fee:");
-      const studentFees = (feesData || []).filter((f: any) => f.studentId === studentId);
+      const studentFees = (feesData || []).filter(
+        (f: any) => f.studentId === studentId
+      );
       const totals = studentFees.reduce(
         (acc: any, f: any) => {
           acc.total += f.amount || 0;
@@ -108,10 +129,30 @@ const StudentsPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // autosave draft while the add dialog is open and not editing an existing student
+  useEffect(() => {
+    if (!isDialogOpen) return;
+    if (editingStudent) return; // don't autosave when editing existing student
+    const t = setTimeout(() => saveDraft(), 500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData, avatarDataUrl, step, isDialogOpen]);
+
+  // persist draft before window unload
+  useEffect(() => {
+    const fn = () => {
+      if (isDialogOpen && !editingStudent) saveDraft();
+    };
+    window.addEventListener("beforeunload", fn);
+    return () => window.removeEventListener("beforeunload", fn);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDialogOpen, formData, avatarDataUrl, editingStudent]);
+
   const loadStudents = async () => {
     try {
-      const studentsData = await kv.getByPrefix("student:");
-      setStudents(studentsData || []);
+      // TODO: Integrate with backend API to fetch students
+      // For now, start with empty students list
+      setStudents([]);
     } catch (err) {
       console.error(err);
       toast.error("Failed to load students");
@@ -186,6 +227,14 @@ const StudentsPage: React.FC = () => {
     previousPreviewRef.current = url;
     setAvatarFile(file);
     setAvatarPreview(url);
+
+    // read file as data URL for draft caching
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string | null;
+      setAvatarDataUrl(result);
+    };
+    reader.readAsDataURL(file);
   };
 
   const removeAvatar = () => {
@@ -195,11 +244,51 @@ const StudentsPage: React.FC = () => {
     }
     setAvatarFile(null);
     setAvatarPreview(null);
+    setAvatarDataUrl(null);
   };
 
   const openAddDialog = () => {
     resetForm();
+    // load draft if present
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (raw) {
+      try {
+        const d = JSON.parse(raw);
+        if (!d.editing) {
+          setFormData((fd) => ({ ...fd, ...(d.formData || {}) }));
+          setStep(typeof d.step === "number" ? d.step : 0);
+          if (d.avatarDataUrl) {
+            setAvatarDataUrl(d.avatarDataUrl);
+            setAvatarPreview(d.avatarDataUrl);
+          }
+        }
+      } catch (e) {
+        console.warn("Invalid draft", e);
+      }
+    }
     setIsDialogOpen(true);
+  };
+
+  const saveDraft = () => {
+    try {
+      const payload = {
+        editing: !!editingStudent,
+        formData,
+        step,
+        avatarDataUrl,
+      };
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
+    } catch (e) {
+      console.warn("Failed to save draft", e);
+    }
+  };
+
+  const clearDraft = () => {
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch (e) {
+      /* ignore */
+    }
   };
 
   const handleEdit = (student: Student) => {
@@ -239,7 +328,7 @@ const StudentsPage: React.FC = () => {
 
   const toggleStatus = async (student: Student) => {
     try {
-      const current = (student as any).status || "Active";
+      const current = student.status || "Active";
       const newStatus =
         current.toLowerCase() === "active" ? "inactive" : "active";
       const updated = { ...student, status: newStatus } as Student;
@@ -280,30 +369,49 @@ const StudentsPage: React.FC = () => {
 
       const student: Student = { ...(baseStudent as Student), studentCode };
 
-      if (avatarFile) {
+      // If user selected an avatar previously but we only have a data URL (draft), convert to File
+      const dataUrlToFile = (dataUrl: string, filename = "avatar.png") => {
+        const arr = dataUrl.split(",");
+        const mime = arr[0].match(/:(.*?);/)?.[1] || "image/png";
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+          u8arr[n] = bstr.charCodeAt(n);
+        }
+        return new File([u8arr], filename, { type: mime });
+      };
+
+      let fileToUpload: File | null = avatarFile;
+      if (!fileToUpload && avatarDataUrl) {
         try {
-          const ext = (avatarFile.name.split(".").pop() || "jpg").toLowerCase();
-          const safeId = String(studentId).replace(/[:\\/\\\s]/g, "-");
-          const filePath = `avatars/${safeId}.${ext}`;
-          const uploadRes = await supabase.storage
-            .from("avatars")
-            .upload(filePath, avatarFile, { upsert: true });
-          if ((uploadRes as any).error) {
-            console.warn("Avatar upload error", (uploadRes as any).error);
-          } else {
-            const publicRes = await supabase.storage
-              .from("avatars")
-              .getPublicUrl(filePath);
-            const publicUrl = (publicRes as any).data?.publicUrl;
-            if (publicUrl) student.avatar = publicUrl;
-          }
+          fileToUpload = dataUrlToFile(
+            avatarDataUrl,
+            `avatar-${Date.now()}.png`
+          );
         } catch (err) {
-          console.warn("Failed to upload avatar", err);
+          console.warn("Failed to convert avatar data url to file", err);
+          fileToUpload = null;
+        }
+      }
+
+      if (fileToUpload) {
+        try {
+          const ext = (fileToUpload.name.split('.').pop() || 'jpg').toLowerCase();
+          const safeId = String(studentId).replace(/[:\\\/\\\s]/g, '-');
+          const filename = `${safeId}.${ext}`;
+          const uploadRes = await kv.uploadFile(fileToUpload, filename);
+          if (uploadRes?.publicUrl) student.avatar = uploadRes.publicUrl;
+          else console.warn('Upload did not return a publicUrl', uploadRes);
+        } catch (err) {
+          console.warn('Failed to upload avatar', err);
         }
       }
 
       await kv.set(studentId, student);
       toast.success(editingStudent ? "Student updated!" : "Student added!");
+      // clear any saved draft when successfully saved
+      clearDraft();
       setIsDialogOpen(false);
       resetForm();
       await loadStudents();
@@ -339,11 +447,23 @@ const StudentsPage: React.FC = () => {
       <Dialog
         open={isDialogOpen}
         onOpenChange={(open) => {
+          // prevent accidental close while submitting
+          if (!open && isSubmitting) return;
           setIsDialogOpen(open);
           if (!open) resetForm();
         }}
       >
-        <DialogContent>
+        <DialogContent className="relative">
+          {isSubmitting && (
+            <div className="absolute inset-0 z-50 bg-white/70 flex items-center justify-center">
+              <div className="flex flex-col items-center gap-3">
+                <div className="h-10 w-10 rounded-full border-4 border-t-transparent border-primary animate-spin" />
+                <div className="text-sm font-medium">
+                  {editingStudent ? "Updating student..." : "Adding student..."}
+                </div>
+              </div>
+            </div>
+          )}
           <DialogHeader>
             <DialogTitle>
               {editingStudent ? "Edit Student" : "Add Student"}
@@ -579,34 +699,56 @@ const StudentsPage: React.FC = () => {
               </div>
             )}
 
-            <div className="flex justify-end gap-2">
-              {step > 0 && (
-                <Button
-                  variant="outline"
-                  type="button"
-                  onClick={() => goToStep(step - 1)}
-                >
-                  Back
-                </Button>
-              )}
+            <div className="flex items-center justify-between">
+              <div className="flex gap-2">
+                {!editingStudent && (
+                  <>
+                    <Button variant="outline" size="sm" onClick={saveDraft}>
+                      Save Draft
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        clearDraft();
+                        resetForm();
+                      }}
+                    >
+                      Clear Draft
+                    </Button>
+                  </>
+                )}
+              </div>
 
-              {step < 2 ? (
-                <Button type="button" onClick={() => goToStep(step + 1)}>
-                  Next
-                </Button>
-              ) : (
-                <Button
-                  type="button"
-                  disabled={isSubmitting}
-                  onClick={() => handleSubmit()}
-                >
-                  {isSubmitting
-                    ? "Saving..."
-                    : editingStudent
-                    ? "Update Student"
-                    : "Add Student"}
-                </Button>
-              )}
+              <div className="flex justify-end gap-2">
+                {step > 0 && (
+                  <Button
+                    variant="outline"
+                    type="button"
+                    onClick={() => goToStep(step - 1)}
+                  >
+                    Back
+                  </Button>
+                )}
+
+                {step < 2 ? (
+                  <Button type="button" onClick={() => goToStep(step + 1)}>
+                    Next
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    disabled={isSubmitting}
+                    onClick={() => handleSubmit()}
+                  >
+                    {isSubmitting
+                      ? "Saving..."
+                      : editingStudent
+                      ? "Update Student"
+                      : "Add Student"}
+                  </Button>
+                )}
+              </div>
             </div>
           </form>
         </DialogContent>
@@ -732,9 +874,20 @@ const StudentsPage: React.FC = () => {
                   </Avatar>
 
                   <div className="text-center">
-                    <h3 className="text-lg font-semibold">
-                      {selectedStudent.name}
-                    </h3>
+                    <div className="flex items-center justify-center gap-3">
+                      <h3 className="text-lg font-semibold">
+                        {selectedStudent.name}
+                      </h3>
+                      <Badge
+                        variant={
+                          statusIsActive(selectedStudent.status)
+                            ? "success"
+                            : "danger"
+                        }
+                      >
+                        {selectedStudent.status || "Active"}
+                      </Badge>
+                    </div>
                     <p className="text-sm text-muted-foreground">
                       {selectedStudent.studentCode}
                     </p>
@@ -742,17 +895,17 @@ const StudentsPage: React.FC = () => {
 
                   <div className="w-full space-y-2">
                     <div className="flex justify-between text-sm items-center">
-                        <span className="text-muted-foreground">Status</span>
-                        <span className="inline-flex items-center gap-2">
-                          <span
-                            className={`w-2 h-2 rounded-full ${statusIsActive((selectedStudent as any).status) ? "bg-emerald-500" : "bg-rose-500"}`}
-                            aria-hidden
-                          />
-                          <span className="font-medium capitalize">
-                            {(selectedStudent as any).status || "Active"}
-                          </span>
-                        </span>
-                      </div>
+                      <span className="text-muted-foreground">Status</span>
+                      <Badge
+                        variant={
+                          statusIsActive(selectedStudent.status)
+                            ? "success"
+                            : "danger"
+                        }
+                      >
+                        {selectedStudent.status || "Active"}
+                      </Badge>
+                    </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Class</span>
                       <span className="font-medium">
@@ -866,53 +1019,95 @@ const StudentsPage: React.FC = () => {
               </div>
 
               <div className="text-center">
-                <h3 className="text-xl font-semibold">{selectedStudent.name}</h3>
-                <p className="text-sm text-muted-foreground">{selectedStudent.studentCode}</p>
+                <div className="flex items-center justify-center gap-3">
+                  <h3 className="text-xl font-semibold">
+                    {selectedStudent.name}
+                  </h3>
+                  <Badge
+                    variant={
+                      statusIsActive(selectedStudent.status)
+                        ? "success"
+                        : "danger"
+                    }
+                  >
+                    {selectedStudent.status || "Active"}
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {selectedStudent.studentCode}
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <div className="text-sm text-muted-foreground">Status</div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className={`inline-block w-3 h-3 rounded-full ${statusIsActive((selectedStudent as any).status) ? "bg-emerald-500" : "bg-rose-500"}`} />
-                    <span className="font-medium capitalize">{(selectedStudent as any).status || "Active"}</span>
+                  <div className="mt-1">
+                    <Badge
+                      variant={
+                        statusIsActive(selectedStudent.status)
+                          ? "success"
+                          : "danger"
+                      }
+                    >
+                      {selectedStudent.status || "Active"}
+                    </Badge>
                   </div>
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground">Class</div>
                   <div className="mt-1">
-                    <span className="inline-block px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 text-sm font-medium">{selectedStudent.classId || "-"}</span>
+                    <span className="inline-block px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 text-sm font-medium">
+                      {selectedStudent.classId || "-"}
+                    </span>
                   </div>
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground">Roll No.</div>
                   <div className="mt-1">
-                    <span className="inline-block px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 text-sm font-medium">{selectedStudent.rollNumber || "-"}</span>
+                    <span className="inline-block px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 text-sm font-medium">
+                      {selectedStudent.rollNumber || "-"}
+                    </span>
                   </div>
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground">Enrolled</div>
                   <div className="mt-1">
-                    <span className="inline-block px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 text-sm font-medium">{new Date(selectedStudent.enrollmentDate || Date.now()).toLocaleDateString()}</span>
+                    <span className="inline-block px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 text-sm font-medium">
+                      {new Date(
+                        selectedStudent.enrollmentDate || Date.now()
+                      ).toLocaleDateString()}
+                    </span>
                   </div>
                 </div>
                 <div className="col-span-2">
                   <div className="text-sm text-muted-foreground">Email</div>
                   <div className="mt-1">
-                    <a className="text-sm text-primary hover:underline" href={`mailto:${selectedStudent.email || ""}`}>{selectedStudent.email || "-"}</a>
+                    <a
+                      className="text-sm text-primary hover:underline"
+                      href={`mailto:${selectedStudent.email || ""}`}
+                    >
+                      {selectedStudent.email || "-"}
+                    </a>
                   </div>
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground">Guardian</div>
                   <div className="mt-1">
-                    <span className="text-sm font-medium">{selectedStudent.guardianName || "-"}</span>
+                    <span className="text-sm font-medium">
+                      {selectedStudent.guardianName || "-"}
+                    </span>
                   </div>
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground">Contact</div>
                   <div className="mt-1">
                     {selectedStudent.guardianPhone ? (
-                      <a className="text-sm text-primary hover:underline" href={`tel:${selectedStudent.guardianPhone}`}>{selectedStudent.guardianPhone}</a>
+                      <a
+                        className="text-sm text-primary hover:underline"
+                        href={`tel:${selectedStudent.guardianPhone}`}
+                      >
+                        {selectedStudent.guardianPhone}
+                      </a>
                     ) : (
                       <span className="text-sm font-medium">-</span>
                     )}

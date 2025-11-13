@@ -28,7 +28,7 @@ import { Label } from "../components/ui/label";
 import { Avatar, AvatarFallback } from "../components/ui/avatar";
 import { Badge } from "../components/ui/badge";
 import { Plus, Search, Edit, Trash2, Mail, Phone } from "lucide-react";
-import * as kv from "../utils/supabase/kv_store";
+import * as kv from "../utils/backend/api";
 import { Teacher } from "../types";
 import { toast } from "sonner";
 

@@ -11,7 +11,7 @@ import { ScrollArea } from "../components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "../components/ui/avatar";
 import { Send, Search } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
-import * as kv from "../utils/supabase/kv_store";
+import * as kv from "../utils/backend/api";
 import { Message } from "../types";
 
 interface Contact {

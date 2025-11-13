@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { supabase } from '../utils/supabase/client';
-import * as kv from '../utils/supabase/kv_store';
+import * as authApi from '../utils/backend/authApi';
 
 export type UserRole = 'admin' | 'teacher' | 'student' | 'parent';
 
@@ -10,6 +9,8 @@ export interface User {
   role: UserRole;
   name: string;
   avatar?: string;
+  phone?: string;
+  address?: string;
   classId?: string;
   childIds?: string[];
 }
@@ -17,9 +18,11 @@ export interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  token: string | null;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name: string, role: UserRole) => Promise<void>;
+  signUp: (email: string, password: string, name: string, role: UserRole, phone?: string, address?: string) => Promise<void>;
   signOut: () => Promise<void>;
+  updateProfile: (data: Partial<User>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -34,107 +37,83 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Verify token on mount
   useEffect(() => {
     checkUser();
   }, []);
 
   const checkUser = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        await loadUserProfile(session.user.id);
+      const savedToken = localStorage.getItem('auth:token');
+      if (savedToken) {
+        setToken(savedToken);
+        const userData = await authApi.getCurrentUser(savedToken);
+        setUser({
+          id: userData.id,
+          email: userData.email,
+          name: userData.name,
+          role: userData.role,
+          avatar: userData.avatar,
+          phone: userData.phone,
+          address: userData.address,
+        });
       }
     } catch (error) {
       console.error('Error checking user:', error);
+      localStorage.removeItem('auth:token');
+      localStorage.removeItem('auth:user');
+      setToken(null);
+      setUser(null);
     } finally {
       setLoading(false);
     }
   };
 
-  const loadUserProfile = async (userId: string) => {
-    try {
-      const userData = await kv.get(`user:${userId}`);
-      if (userData) {
-        setUser(userData);
-      }
-    } catch (error) {
-      console.error('Error loading user profile:', error);
-    }
-  };
-
   const signIn = async (email: string, password: string) => {
     try {
-      // For demo purposes, check against demo accounts first
-      const demoAccounts: Record<string, { id: string; password: string; userData: User }> = {
-        'admin@school.com': {
-          id: 'demo-admin',
-          password: 'admin123',
-          userData: { id: 'demo-admin', email: 'admin@school.com', name: 'Admin User', role: 'admin' },
-        },
-        'teacher@school.com': {
-          id: 'demo-teacher',
-          password: 'teacher123',
-          userData: { id: 'demo-teacher', email: 'teacher@school.com', name: 'Sarah Williams', role: 'teacher' },
-        },
-        'student@school.com': {
-          id: 'demo-student',
-          password: 'student123',
-          userData: { id: 'demo-student', email: 'student@school.com', name: 'Alice Johnson', role: 'student', classId: 'class-10a' },
-        },
-        'parent@school.com': {
-          id: 'demo-parent',
-          password: 'parent123',
-          userData: { id: 'demo-parent', email: 'parent@school.com', name: 'Robert Johnson', role: 'parent', childIds: ['student:1'] },
-        },
-      };
-
-      const demoAccount = demoAccounts[email];
-      if (demoAccount && demoAccount.password === password) {
-        // Demo account - just set the user without writing to KV
-        // (Demo users are already initialized in the database by the server)
-        setUser(demoAccount.userData);
-        return;
-      }
-
-      // Try regular Supabase auth
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const response = await authApi.login({ email, password });
+      const { token: newToken, user: userData } = response;
+      
+      setToken(newToken);
+      setUser({
+        id: userData.id,
+        email: userData.email,
+        name: userData.name,
+        role: userData.role,
+        avatar: userData.avatar,
+        phone: userData.phone,
+        address: userData.address,
       });
       
-      if (error) throw error;
-      
-      if (data.user) {
-        await loadUserProfile(data.user.id);
-      }
+      localStorage.setItem('auth:token', newToken);
+      localStorage.setItem('auth:user', JSON.stringify(userData));
     } catch (error) {
       console.error('Error signing in:', error);
       throw error;
     }
   };
 
-  const signUp = async (email: string, password: string, name: string, role: UserRole) => {
+  const signUp = async (email: string, password: string, name: string, role: UserRole, phone?: string, address?: string) => {
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
+      const response = await authApi.register({ email, password, name, role, phone, address });
+      const { token: newToken, user: userData } = response;
+      
+      setToken(newToken);
+      setUser({
+        id: userData.id,
+        email: userData.email,
+        name: userData.name,
+        role: userData.role,
+        avatar: userData.avatar,
+        phone: userData.phone,
+        address: userData.address,
       });
       
-      if (error) throw error;
-      
-      if (data.user) {
-        const newUser: User = {
-          id: data.user.id,
-          email,
-          name,
-          role,
-        };
-        
-        await kv.set(`user:${data.user.id}`, newUser);
-        setUser(newUser);
-      }
+      localStorage.setItem('auth:token', newToken);
+      localStorage.setItem('auth:user', JSON.stringify(userData));
     } catch (error) {
       console.error('Error signing up:', error);
       throw error;
@@ -143,7 +122,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const signOut = async () => {
     try {
-      await supabase.auth.signOut();
+      localStorage.removeItem('auth:token');
+      localStorage.removeItem('auth:user');
+      setToken(null);
       setUser(null);
     } catch (error) {
       console.error('Error signing out:', error);
@@ -151,8 +132,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const updateUserProfile = async (data: Partial<User>) => {
+    try {
+      if (!token) throw new Error('No token available');
+      const updated = await authApi.updateProfile(token, data);
+      setUser({
+        id: updated.id,
+        email: updated.email,
+        name: updated.name,
+        role: updated.role,
+        avatar: updated.avatar,
+        phone: updated.phone,
+        address: updated.address,
+      });
+      localStorage.setItem('auth:user', JSON.stringify(updated));
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      throw error;
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, loading, token, signIn, signUp, signOut, updateProfile: updateUserProfile }}>
       {children}
     </AuthContext.Provider>
   );

@@ -35,7 +35,7 @@ import {
   Line,
 } from "recharts";
 import { Award, TrendingUp, Download, FileText } from "lucide-react";
-import * as kv from "../utils/supabase/kv_store";
+import * as kv from "../utils/backend/api";
 import { Result } from "../types";
 
 const demoResults = [

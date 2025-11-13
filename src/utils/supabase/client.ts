@@ -1,6 +1,2 @@
-import { createClient } from '@supabase/supabase-js';
-import { projectId, publicAnonKey } from './info';
-
-const supabaseUrl = `https://${projectId}.supabase.co`;
-
-export const supabase = createClient(supabaseUrl, publicAnonKey);
+// Legacy Supabase client removed. Use the local backend and backend/api.ts instead.
+export const supabase = null;

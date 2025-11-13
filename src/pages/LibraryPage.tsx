@@ -17,7 +17,7 @@ import {
 } from "../components/ui/table";
 import { Badge } from "../components/ui/badge";
 import { BookOpen, Search, Plus, BookCheck, BookX } from "lucide-react";
-import * as kv from "../utils/supabase/kv_store";
+import * as kv from "../utils/backend/api";
 import { Book, BookIssue } from "../types";
 
 export const LibraryPage: React.FC = () => {
