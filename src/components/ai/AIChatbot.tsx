@@ -38,17 +38,47 @@ export const AIChatbot: React.FC = () => {
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
 
-    // Simulate AI response
-    setTimeout(() => {
+    // Call backend AI endpoint
+    try {
+      const token = localStorage.getItem('auth:token');
+      const res = await fetch(`${(import.meta.env.VITE_REACT_APP_BACKEND_URL as string) || 'http://localhost:5000'}/api/ai`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ message: input, history: messages }),
+      });
+      if (!res.ok) {
+        // fallback to local generator
+        const botResponse = generateResponse(input);
+        const botMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          text: botResponse,
+          sender: 'bot',
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, botMessage]);
+        return;
+      }
+      const data = await res.json();
+      const botMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: data.reply || generateResponse(input),
+        sender: 'bot',
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, botMessage]);
+    } catch (err) {
       const botResponse = generateResponse(input);
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: botResponse,
-        sender: "bot",
+        sender: 'bot',
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, botMessage]);
-    }, 1000);
+    }
   };
 
   const generateResponse = (query: string): string => {

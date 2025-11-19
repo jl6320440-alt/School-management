@@ -13,6 +13,7 @@ export interface User {
   address?: string;
   classId?: string;
   childIds?: string[];
+  studentCode?: string;
 }
 
 interface AuthContextType {

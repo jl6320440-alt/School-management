@@ -19,6 +19,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "../components/ui/dialog";
@@ -44,10 +45,9 @@ import {
 import { Badge } from "../components/ui/badge";
 import { formatCurrency } from "../utils/formatCurrency";
 import { useNavigate } from "react-router-dom";
-import * as kv from "../utils/backend/api";
+import * as studentApi from "../utils/backend/studentApi";
 import { Student } from "../types";
 import { toast } from "sonner";
-
 
 const StudentsPage: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
@@ -99,21 +99,13 @@ const StudentsPage: React.FC = () => {
 
   const loadStudentFeeTotals = async (studentId: string) => {
     try {
-      const feesData = await kv.getByPrefix("fee:");
-      const studentFees = (feesData || []).filter(
-        (f: any) => f.studentId === studentId
-      );
-      const totals = studentFees.reduce(
-        (acc: any, f: any) => {
-          acc.total += f.amount || 0;
-          if (f.status === "paid") acc.paid += f.amount || 0;
-          if (f.status === "pending") acc.pending += f.amount || 0;
-          if (f.status === "overdue") acc.overdue += f.amount || 0;
-          return acc;
-        },
-        { total: 0, paid: 0, pending: 0, overdue: 0 }
-      );
-      setStudentFeeTotals(totals);
+      // Fees API not yet implemented, skip loading
+      setStudentFeeTotals({
+        total: 0,
+        paid: 0,
+        pending: 0,
+        overdue: 0,
+      });
     } catch (err) {
       console.error(err);
       setStudentFeeTotals(null);
@@ -150,9 +142,24 @@ const StudentsPage: React.FC = () => {
 
   const loadStudents = async () => {
     try {
-      // TODO: Integrate with backend API to fetch students
-      // For now, start with empty students list
-      setStudents([]);
+      const data = await studentApi.listStudents();
+      // Map API response to frontend Student type
+      const mapped = data.map((student: any) => ({
+        id: student.id || student._id,
+        studentCode: student.studentCode || '',
+        name: student.name || '',
+        email: student.email || '',
+        classId: student.classId || student.className || '',
+        rollNumber: student.rollNumber || '',
+        dateOfBirth: student.dateOfBirth || student.dob || '',
+        guardianName: student.guardianName || '',
+        guardianPhone: student.guardianPhone || '',
+        address: student.address || '',
+        avatar: student.avatar,
+        status: student.status,
+        enrollmentDate: student.enrollmentDate || new Date().toISOString(),
+      } as Student));
+      setStudents(mapped);
     } catch (err) {
       console.error(err);
       toast.error("Failed to load students");
@@ -203,6 +210,7 @@ const StudentsPage: React.FC = () => {
     });
     setAvatarFile(null);
     setAvatarPreview(null);
+    setAvatarDataUrl(null);
     if (previousPreviewRef.current) {
       URL.revokeObjectURL(previousPreviewRef.current);
       previousPreviewRef.current = null;
@@ -310,7 +318,7 @@ const StudentsPage: React.FC = () => {
   const handleDelete = async (studentId: string) => {
     if (!confirm("Are you sure you want to delete this student?")) return;
     try {
-      await kv.del(studentId);
+      await studentApi.deleteStudent(studentId);
       toast.success("Student deleted");
       loadStudents();
     } catch (err) {
@@ -324,16 +332,19 @@ const StudentsPage: React.FC = () => {
     loadStudentFeeTotals(student.id);
   };
 
+  const goToIdCard = (student: Student) => {
+    navigate(`/students/${encodeURIComponent(student.id)}/id-card`);
+  };
+
   const closeProfile = () => setSelectedStudent(null);
 
   const toggleStatus = async (student: Student) => {
     try {
-      const current = student.status || "Active";
+      const current = student.status || "active";
       const newStatus =
         current.toLowerCase() === "active" ? "inactive" : "active";
-      const updated = { ...student, status: newStatus } as Student;
-      await kv.set(student.id, updated);
-      setSelectedStudent(updated);
+      await studentApi.updateStudent(student.id, { status: newStatus });
+      setSelectedStudent({ ...student, status: newStatus });
       await loadStudents();
       toast.success("Status updated");
     } catch (err) {
@@ -348,69 +359,70 @@ const StudentsPage: React.FC = () => {
     if (e && typeof (e as any).preventDefault === "function")
       (e as any).preventDefault();
 
-    // Photo is optional by user preference. We require bio to be complete (guarded earlier).
+    // Validate required fields
+    if (!formData.name?.trim()) {
+      toast.error("Name is required");
+      return;
+    }
+    if (!formData.email?.trim()) {
+      toast.error("Email is required");
+      return;
+    }
+    if (!formData.classId?.trim()) {
+      toast.error("Class is required");
+      return;
+    }
+    if (!formData.rollNumber?.trim()) {
+      toast.error("Roll Number is required");
+      return;
+    }
+    if (!formData.dateOfBirth?.trim()) {
+      toast.error("Date of Birth is required");
+      return;
+    }
+    if (!formData.guardianName?.trim()) {
+      toast.error("Guardian Name is required");
+      return;
+    }
+    if (!formData.guardianPhone?.trim()) {
+      toast.error("Guardian Phone is required");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const studentId = editingStudent?.id || `student:${Date.now()}`;
-      const baseStudent: Partial<Student> = {
-        ...formData,
-        id: studentId,
+      // Build clean payload with only allowed fields
+      const studentData = {
+        name: formData.name,
+        email: formData.email,
+        classId: formData.classId,
+        rollNumber: formData.rollNumber,
+        dateOfBirth: formData.dateOfBirth,
+        guardianName: formData.guardianName,
+        guardianPhone: formData.guardianPhone,
+        address: formData.address || undefined,
+        avatar: avatarDataUrl || undefined,
         enrollmentDate:
           editingStudent?.enrollmentDate || new Date().toISOString(),
+        studentCode:
+          editingStudent?.studentCode ||
+          generateStudentCode(
+            new Set(
+              students.map((s) => s.studentCode).filter(Boolean) as string[]
+            )
+          ),
       };
 
-      let studentCode = editingStudent?.studentCode;
-      if (!studentCode) {
-        const existingCodes = new Set(
-          students.map((s) => s.studentCode).filter(Boolean) as string[]
-        );
-        studentCode = generateStudentCode(existingCodes);
+      if (editingStudent) {
+        // Update existing student
+        await studentApi.updateStudent(editingStudent.id, studentData);
+        toast.success("Student updated!");
+      } else {
+        // Create new student
+        await studentApi.createStudent(studentData);
+        toast.success("Student added!");
       }
 
-      const student: Student = { ...(baseStudent as Student), studentCode };
-
-      // If user selected an avatar previously but we only have a data URL (draft), convert to File
-      const dataUrlToFile = (dataUrl: string, filename = "avatar.png") => {
-        const arr = dataUrl.split(",");
-        const mime = arr[0].match(/:(.*?);/)?.[1] || "image/png";
-        const bstr = atob(arr[1]);
-        let n = bstr.length;
-        const u8arr = new Uint8Array(n);
-        while (n--) {
-          u8arr[n] = bstr.charCodeAt(n);
-        }
-        return new File([u8arr], filename, { type: mime });
-      };
-
-      let fileToUpload: File | null = avatarFile;
-      if (!fileToUpload && avatarDataUrl) {
-        try {
-          fileToUpload = dataUrlToFile(
-            avatarDataUrl,
-            `avatar-${Date.now()}.png`
-          );
-        } catch (err) {
-          console.warn("Failed to convert avatar data url to file", err);
-          fileToUpload = null;
-        }
-      }
-
-      if (fileToUpload) {
-        try {
-          const ext = (fileToUpload.name.split('.').pop() || 'jpg').toLowerCase();
-          const safeId = String(studentId).replace(/[:\\\/\\\s]/g, '-');
-          const filename = `${safeId}.${ext}`;
-          const uploadRes = await kv.uploadFile(fileToUpload, filename);
-          if (uploadRes?.publicUrl) student.avatar = uploadRes.publicUrl;
-          else console.warn('Upload did not return a publicUrl', uploadRes);
-        } catch (err) {
-          console.warn('Failed to upload avatar', err);
-        }
-      }
-
-      await kv.set(studentId, student);
-      toast.success(editingStudent ? "Student updated!" : "Student added!");
-      // clear any saved draft when successfully saved
       clearDraft();
       setIsDialogOpen(false);
       resetForm();
@@ -429,7 +441,8 @@ const StudentsPage: React.FC = () => {
     return (
       (s.name || "").toLowerCase().includes(q) ||
       (s.email || "").toLowerCase().includes(q) ||
-      (s.rollNumber || "").toLowerCase().includes(q)
+      (s.rollNumber || "").toLowerCase().includes(q) ||
+      (s.studentCode || "").toLowerCase().includes(q)
     );
   });
 
@@ -454,6 +467,7 @@ const StudentsPage: React.FC = () => {
         }}
       >
         <DialogContent className="relative">
+          <DialogDescription className="sr-only">Student form dialog</DialogDescription>
           {isSubmitting && (
             <div className="absolute inset-0 z-50 bg-white/70 flex items-center justify-center">
               <div className="flex flex-col items-center gap-3">
@@ -566,10 +580,20 @@ const StudentsPage: React.FC = () => {
                     >
                       <SelectTrigger className="w-full" />
                       <SelectContent>
-                        <SelectItem value="class-10a">Grade 10-A</SelectItem>
-                        <SelectItem value="class-10b">Grade 10-B</SelectItem>
-                        <SelectItem value="class-9a">Grade 9-A</SelectItem>
-                        <SelectItem value="class-9b">Grade 9-B</SelectItem>
+                        <SelectItem value="creche">Creche</SelectItem>
+                        <SelectItem value="nursery-1">Nursery 1</SelectItem>
+                        <SelectItem value="nursery-2">Nursery 2</SelectItem>
+                        <SelectItem value="kg1">KG1</SelectItem>
+                        <SelectItem value="kg2">KG2</SelectItem>
+                        <SelectItem value="grade-1">Grade 1</SelectItem>
+                        <SelectItem value="grade-2">Grade 2</SelectItem>
+                        <SelectItem value="grade-3">Grade 3</SelectItem>
+                        <SelectItem value="grade-4">Grade 4</SelectItem>
+                        <SelectItem value="grade-5">Grade 5</SelectItem>
+                        <SelectItem value="grade-6">Grade 6</SelectItem>
+                        <SelectItem value="grade-7">Grade 7</SelectItem>
+                        <SelectItem value="grade-8">Grade 8</SelectItem>
+                        <SelectItem value="grade-9">Grade 9</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -763,7 +787,7 @@ const StudentsPage: React.FC = () => {
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
-                      placeholder="Search students..."
+                      placeholder="Search by name, code, email, or roll number..."
                       className="pl-9"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
@@ -813,7 +837,24 @@ const StudentsPage: React.FC = () => {
                           </div>
                         </TableCell>
                         <TableCell>{student.rollNumber}</TableCell>
-                        <TableCell>{student.classId}</TableCell>
+                        <TableCell>{
+                          {
+                            'creche': 'Creche',
+                            'nursery-1': 'Nursery 1',
+                            'nursery-2': 'Nursery 2',
+                            'kg1': 'KG1',
+                            'kg2': 'KG2',
+                            'grade-1': 'Grade 1',
+                            'grade-2': 'Grade 2',
+                            'grade-3': 'Grade 3',
+                            'grade-4': 'Grade 4',
+                            'grade-5': 'Grade 5',
+                            'grade-6': 'Grade 6',
+                            'grade-7': 'Grade 7',
+                            'grade-8': 'Grade 8',
+                            'grade-9': 'Grade 9',
+                          }[student.classId!] || student.classId || '—'
+                        }</TableCell>
                         <TableCell>{student.guardianName}</TableCell>
                         <TableCell>{student.guardianPhone}</TableCell>
                         <TableCell className="text-right">
@@ -822,13 +863,23 @@ const StudentsPage: React.FC = () => {
                               variant="ghost"
                               size="icon"
                               onClick={() => handleView(student)}
+                              title="View Profile"
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
+                              onClick={() => goToIdCard(student)}
+                              title="View ID Card"
+                            >
+                              <FileText className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               onClick={() => handleEdit(student)}
+                              title="Edit"
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -836,6 +887,7 @@ const StudentsPage: React.FC = () => {
                               variant="ghost"
                               size="icon"
                               onClick={() => handleDelete(student.id)}
+                              title="Delete"
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>

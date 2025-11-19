@@ -21,7 +21,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "../components/ui/dialog";
 import { Label } from "../components/ui/label";
 import {
@@ -132,6 +131,7 @@ export const ExamsPage: React.FC = () => {
             </Button>
           </DialogTrigger>
           <DialogContent>
+            <DialogDescription className="sr-only">Exams dialog</DialogDescription>
             <DialogHeader>
               <DialogTitle>Schedule New Exam</DialogTitle>
               <DialogDescription>

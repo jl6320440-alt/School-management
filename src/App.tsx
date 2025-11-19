@@ -14,6 +14,7 @@ import { TeacherDashboard } from "./pages/TeacherDashboard";
 import { ParentDashboard } from "./pages/ParentDashboard";
 import { UnauthorizedPage } from "./pages/UnauthorizedPage";
 import { StudentsPage } from "./pages/StudentsPage";
+import { StudentIdCardPage } from "./pages/StudentIdCardPage";
 import { TeachersPage } from "./pages/TeachersPage";
 import { ExamsPage } from "./pages/ExamsPage";
 import { FeesPage } from "./pages/FeesPage";
@@ -77,6 +78,17 @@ const AppRoutes: React.FC = () => {
           <RoleProtectedRoute allowedRoles={['admin', 'teacher']}>
             <ProtectedRoute>
               <StudentsPage />
+            </ProtectedRoute>
+          </RoleProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/students/:id/id-card"
+        element={
+          <RoleProtectedRoute allowedRoles={['admin', 'teacher', 'student', 'parent']}>
+            <ProtectedRoute>
+              <StudentIdCardPage />
             </ProtectedRoute>
           </RoleProtectedRoute>
         }

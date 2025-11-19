@@ -4,27 +4,27 @@ export interface Student {
   studentCode?: string;
   name: string;
   email: string;
-  classId: string;
-  rollNumber: string;
-  dateOfBirth: string;
-  guardianName: string;
-  guardianPhone: string;
-  address: string;
+  classId?: string;
+  rollNumber?: string;
+  dateOfBirth?: string;
+  guardianName?: string;
+  guardianPhone?: string;
+  address?: string;
   avatar?: string;
   /** student's active status */
   status?: 'active' | 'inactive';
-  enrollmentDate: string;
+  enrollmentDate?: string;
 }
 
 export interface Teacher {
   id: string;
   name: string;
   email: string;
-  phone: string;
-  subjects: string[];
-  classes: string[];
-  salary: number;
-  joiningDate: string;
+  phone?: string;
+  subjects?: string[];
+  classes?: string[];
+  salary?: number;
+  joiningDate?: string;
   avatar?: string;
 }
 
