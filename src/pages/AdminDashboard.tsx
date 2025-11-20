@@ -9,10 +9,20 @@ import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import { motion } from "motion/react";
 import { StatCard } from "../components/dashboard/StatCard";
-import { Users, GraduationCap, BookOpen, Star } from "lucide-react";
+import { Users, GraduationCap, BookOpen, Star, Mail, Phone } from "lucide-react";
 import CediGlyph from "../components/icons/CediGlyph";
 import { Tilt } from "../components/ui/tilt";
 import { Link, useNavigate } from "react-router-dom";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogTrigger,
+} from "../components/ui/dialog";
+import { Avatar, AvatarImage, AvatarFallback } from "../components/ui/avatar";
 import {
   PieChart,
   Pie,
@@ -72,6 +82,14 @@ export const AdminDashboard: React.FC = () => {
     lastChecked?: string;
   } | null>(null);
   const [healthLoading, setHealthLoading] = useState(false);
+
+  // UI state for task actions
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<any | null>(null);
+  const [assignAssignee, setAssignAssignee] = useState("");
+
+  const apiUrl = (import.meta.env.VITE_API_URL as string) || "http://localhost:5000";
 
   useEffect(() => {
     setStats({
@@ -187,6 +205,88 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
+  // Pending task actions
+  const openConfirmMarkDone = (task: any) => {
+    setSelectedTask(task);
+    setConfirmOpen(true);
+  };
+
+  const handleMarkDone = async (task: any) => {
+    if (!task) return;
+    // optimistic update: remove task from list
+    setPendingTasks((prev) => prev.filter((t) => t.id !== task.id));
+    try {
+      if (task.id) {
+        const res = await fetch(`${apiUrl}/api/admin/tasks/${encodeURIComponent(task.id)}/complete`, { method: "POST" });
+        if (!res.ok) throw new Error("complete-failed");
+      }
+      toast.success("Task completed");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to complete task");
+      // revert: re-add task
+      setPendingTasks((prev) => [task, ...prev]);
+    } finally {
+      setConfirmOpen(false);
+      setSelectedTask(null);
+    }
+  };
+
+  const openAssignDialog = (task: any) => {
+    setSelectedTask(task);
+    setAssignAssignee("");
+    setAssignOpen(true);
+  };
+
+  const handleAssignConfirm = async () => {
+    if (!selectedTask) return;
+    const assigneeId = assignAssignee.trim();
+    if (!assigneeId) {
+      toast.error("Enter an assignee id");
+      return;
+    }
+    try {
+      if (selectedTask.id) {
+        const res = await fetch(`${apiUrl}/api/admin/tasks/${encodeURIComponent(selectedTask.id)}/assign`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ assigneeId }),
+        });
+        if (!res.ok) throw new Error("assign-failed");
+      }
+      toast.success("Task assigned");
+      // optionally update tasks list with a note
+      setPendingTasks((prev) => prev.map((t) => (t.id === selectedTask.id ? { ...t, assignedTo: assigneeId } : t)));
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to assign task");
+    } finally {
+      setAssignOpen(false);
+      setSelectedTask(null);
+      setAssignAssignee("");
+    }
+  };
+
+  // Top teacher actions
+  const handleFeatureTeacher = async (teacherId?: string) => {
+    if (!teacherId) {
+      toast.error("No teacher id available");
+      return;
+    }
+    // optimistic
+    const prev = topTeacher;
+    setTopTeacher((t: any) => ({ ...t, featured: true }));
+    try {
+      const res = await fetch(`${apiUrl}/api/admin/teachers/${encodeURIComponent(teacherId)}/feature`, { method: "POST" });
+      if (!res.ok) throw new Error("feature-failed");
+      toast.success("Teacher featured");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to feature teacher");
+      setTopTeacher(prev);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <motion.div
@@ -250,24 +350,24 @@ export const AdminDashboard: React.FC = () => {
               <div className="space-y-2">
                 {pendingTasks.slice(0, 4).map((t, i) => (
                   <div
-                    key={i}
+                    key={t.id || i}
                     className="flex items-start justify-between gap-2"
                   >
-                    <div>
+                    <div className="flex-1">
                       <div className="font-medium text-sm">
                         {t.title || t.type || "Task"}
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {t.summary || t.description || ""}
                       </div>
+                      {t.assignedTo && (
+                        <div className="text-xs text-muted-foreground">Assigned: {t.assignedTo}</div>
+                      )}
                     </div>
-                    <div>
-                      <Button
-                        size="sm"
-                        onClick={() => navigate(t.link || "/tasks")}
-                      >
-                        View
-                      </Button>
+                    <div className="flex-shrink-0 flex items-center gap-2">
+                      <Button size="sm" variant="ghost" onClick={() => openConfirmMarkDone(t)}>Mark Done</Button>
+                      <Button size="sm" variant="outline" onClick={() => openAssignDialog(t)}>Assign</Button>
+                      <Button size="sm" onClick={() => navigate(t.link || "/tasks")}>Open</Button>
                     </div>
                   </div>
                 ))}
@@ -354,31 +454,36 @@ export const AdminDashboard: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-4">
-              <div
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 9999,
-                  background: "#FEF3C7",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Star className="h-6 w-6 text-yellow-500" />
-              </div>
+              <Avatar className="h-14 w-14">
+                {topTeacher?.avatar ? (
+                  <AvatarImage src={topTeacher.avatar} alt={topTeacher.name} />
+                ) : (
+                  <AvatarFallback>{(topTeacher.name || 'T').slice(0,1)}</AvatarFallback>
+                )}
+              </Avatar>
               <div className="flex-1">
-                <div className="font-semibold">{topTeacher.name}</div>
+                <div className="font-semibold flex items-center gap-2">
+                  {topTeacher.name}
+                  {topTeacher.featured && (<span className="text-xs px-2 py-0.5 rounded bg-yellow-100 text-yellow-800">Featured</span>)}
+                </div>
                 <div className="text-xs text-muted-foreground">
                   {topTeacher.subject} · {topTeacher.classes?.join(", ")}
+                </div>
+                <div className="mt-1 flex items-center gap-3 text-sm">
+                  <div className="flex items-center gap-1 text-muted-foreground"><Star className="h-4 w-4 text-yellow-500" />{topTeacher.rating || 4.6}</div>
+                  {topTeacher.email && (
+                    <a className="flex items-center gap-1 text-xs text-muted-foreground" href={`mailto:${topTeacher.email}`}><Mail className="h-4 w-4" />Email</a>
+                  )}
+                  {topTeacher.phone && (
+                    <a className="flex items-center gap-1 text-xs text-muted-foreground" href={`tel:${topTeacher.phone}`}><Phone className="h-4 w-4" />Call</a>
+                  )}
                 </div>
                 <div className="mt-2 flex gap-2">
                   <Button size="sm" asChild>
                     <Link to="/teachers">Manage</Link>
                   </Button>
-                  <Button size="sm" variant="outline" onClick={fetchTopTeacher}>
-                    Refresh
-                  </Button>
+                  <Button size="sm" variant="outline" onClick={fetchTopTeacher}>Refresh</Button>
+                  <Button size="sm" onClick={() => handleFeatureTeacher(topTeacher?.id)} disabled={topTeacher?.featured}>Feature</Button>
                 </div>
               </div>
             </div>
@@ -484,6 +589,41 @@ export const AdminDashboard: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+      {/* Confirm Mark Done Dialog */}
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Complete Task</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to mark this task as completed?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 flex gap-2 justify-end">
+            <Button variant="outline" onClick={() => { setConfirmOpen(false); setSelectedTask(null); }}>Cancel</Button>
+            <Button onClick={() => handleMarkDone(selectedTask)}>Confirm</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign Dialog */}
+      <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign Task</DialogTitle>
+            <DialogDescription>
+              Enter an assignee id (user id or email) to assign this task.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 space-y-2">
+            <Input placeholder="Assignee id or email" value={assignAssignee} onChange={(e) => setAssignAssignee(e.target.value)} />
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => { setAssignOpen(false); setSelectedTask(null); }}>Cancel</Button>
+              <Button onClick={handleAssignConfirm}>Assign</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 };
