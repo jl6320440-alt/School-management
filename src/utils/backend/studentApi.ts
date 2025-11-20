@@ -84,6 +84,7 @@ export async function createStudent(data: StudentData): Promise<Student> {
     dob: data.dateOfBirth || data.dob || undefined,
     parentContact: data.parentContact || data.guardianPhone || undefined,
     className: data.className || data.classId || undefined,
+    rollNumber: data.rollNumber || undefined,
     section: data.section || undefined,
     guardianName: data.guardianName || undefined,
     guardianPhone: data.guardianPhone || undefined,
@@ -129,12 +130,31 @@ export async function getStudent(id: string): Promise<Student> {
   };
 }
 
+export async function getStudentByCode(code: string): Promise<Student | null> {
+  const token = getToken();
+  if (!token) throw new Error('Not authenticated');
+  const res = await fetch(`${API_BASE}/api/students/by-code/${encodeURIComponent(code)}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  if (res.status === 404) return null;
+  const responseData = await handleResponse(res);
+  return {
+    ...responseData,
+    id: responseData._id || responseData.id,
+  };
+}
+
 export async function updateStudent(id: string, data: Partial<StudentData>): Promise<Student> {
   const token = getToken();
   if (!token) throw new Error('Not authenticated');
   // Only send fields allowed by backend update schema: className, section, guardianName, guardianPhone, parentContact, status
   const payload: any = {
     className: data.className || data.classId || undefined,
+    rollNumber: data.rollNumber || undefined,
     section: data.section || undefined,
     guardianName: data.guardianName || undefined,
     guardianPhone: data.guardianPhone || undefined,
@@ -176,6 +196,7 @@ export default {
   listStudents,
   createStudent,
   getStudent,
+  getStudentByCode,
   updateStudent,
   deleteStudent,
 };

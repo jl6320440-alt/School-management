@@ -5,6 +5,8 @@ export interface Student {
   name: string;
   email: string;
   classId?: string;
+  /** human-readable class name, e.g. Grade 1 */
+  className?: string;
   rollNumber?: string;
   dateOfBirth?: string;
   guardianName?: string;

@@ -111,28 +111,18 @@ export const AdminDashboard: React.FC = () => {
 
     try {
       setLookupLoading(true);
-      const all = await studentApi.listStudents();
-      const matches = (all || []).filter((s: any) => {
-        return (
-          (s.studentCode || "").toString().toLowerCase() ===
-          code.toLowerCase()
-        );
-      });
-
-      if (!matches.length) {
+      // Call backend endpoint to fetch by studentCode
+      const student = await studentApi.getStudentByCode(code);
+      if (!student) {
         toast.error("No student found with that code");
         setLookupResults([]);
         return;
       }
-
-      setLookupResults(matches);
-      // If exactly one match, directly navigate to id card
-      if (matches.length === 1) {
-        const id = matches[0].id || matches[0]._id;
-        if (id) {
-          navigate(`/students/${encodeURIComponent(id)}/id-card`);
-        }
-      }
+      // show single match
+      setLookupResults([student]);
+      // navigate to id card directly
+      const id = student.id || (student as any)._id;
+      if (id) navigate(`/students/${encodeURIComponent(id)}/id-card`);
     } catch (err) {
       console.error(err);
       toast.error("Lookup failed");
@@ -553,13 +543,9 @@ export const AdminDashboard: React.FC = () => {
         </Tilt>
       </motion.div>
 
-      {/* Quick ID Card Lookup */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.95, duration: 0.45 }}
-      >
-        <Tilt className="overflow-hidden">
+      {/* Quick ID Card Lookup (static, no animation) */}
+      <div>
+        <div className="overflow-hidden">
           <Card>
             <CardHeader>
               <CardTitle>Quick ID Card Lookup</CardTitle>
@@ -609,8 +595,8 @@ export const AdminDashboard: React.FC = () => {
               )}
             </CardContent>
           </Card>
-        </Tilt>
-      </motion.div>
+        </div>
+      </div>
 
     </div>
   );
