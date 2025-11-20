@@ -13,6 +13,8 @@ export interface Student {
   guardianPhone?: string;
   address?: string;
   avatar?: string;
+  /** student's phone (from user) */
+  phone?: string;
   /** student's active status */
   status?: 'active' | 'inactive';
   enrollmentDate?: string;

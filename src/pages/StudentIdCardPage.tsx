@@ -13,18 +13,25 @@ import {
   Mail,
   MapPin,
   Smartphone,
-  Star,
-  Sparkles,
+  GraduationCap,
+  Award,
+  Phone,
+  Building2,
+  Users,
 } from "lucide-react";
 import * as studentApi from "../utils/backend/studentApi";
 import { Student } from "../types";
 import { toast } from "sonner";
 import { useTheme } from "../contexts/ThemeContext";
 
+// StudentIdCardPage - Complete Redesign
+// Modern, premium student ID card with comprehensive details display
+// Features: Multi-section layout, enhanced visuals, responsive design
 export const StudentIdCardPage: React.FC = () => {
   const { theme } = useTheme();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+
   const [student, setStudent] = useState<Student | null>(null);
   const [loading, setLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
@@ -43,10 +50,18 @@ export const StudentIdCardPage: React.FC = () => {
     try {
       setLoading(true);
       const data = await studentApi.getStudent(id);
-      console.log("Student data received:", data);
+      console.log("========== STUDENT DATA RECEIVED ==========");
+      console.log("Full Response:", JSON.stringify(data, null, 2));
       console.log("Avatar URL:", data?.avatar);
+      console.log("Avatar Type:", typeof data?.avatar);
+      console.log("Avatar Empty?:", !data?.avatar);
+      console.log("Avatar Length:", data?.avatar?.length || 0);
+      console.log("Name:", data?.name);
+      console.log("Email:", data?.email);
+      console.log("Student Code:", data?.studentCode);
+      console.log("==========================================");
       setStudent(data as Student | null);
-      setImageError(false); // Reset image error on new load
+      setImageError(false);
     } catch (err) {
       console.error("Failed to load student:", err);
       toast.error("Failed to load student");
@@ -56,10 +71,7 @@ export const StudentIdCardPage: React.FC = () => {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
+  const handlePrint = () => window.print();
   const handleDownload = () => {
     toast.info("Use Print (Ctrl+P) to save as PDF");
     window.print();
@@ -68,7 +80,10 @@ export const StudentIdCardPage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <p className="text-muted-foreground">Loading...</p>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading student profile...</p>
+        </div>
       </div>
     );
   }
@@ -83,18 +98,11 @@ export const StudentIdCardPage: React.FC = () => {
 
   const schoolName =
     (import.meta.env.VITE_SCHOOL_NAME as string) || "Alpha Montessori";
-
   const isDark = theme === "dark";
 
-  // Premium color scheme
-  const cardBgClass = "bg-white border border-slate-200 shadow-2xl";
-  const cardDarkClass = "bg-slate-900 border border-slate-700 shadow-2xl";
-  const finalCardClass = isDark ? cardDarkClass : cardBgClass;
-
   const cardWidth = 360;
-  const cardHeight = 580;
+  const cardHeight = 650;
 
-  // Generate QR code URL
   const qrCodeUrl = `${
     (import.meta.env.VITE_API_URL as string) || "http://localhost:3000"
   }/student/${student.id}`;
@@ -107,16 +115,15 @@ export const StudentIdCardPage: React.FC = () => {
     student.studentCode ||
     `STU-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
-  const className = student.className || "N/A";
-  const rollNumber = student.rollNumber || "N/A";
-  const guardianName = student.guardianName || "N/A";
-  const guardianPhone = student.guardianPhone || "N/A";
-  const studentDOB = student.dateOfBirth || "Not Provided";
-  const studentEmail = student.email || "Not Provided";
-  const studentAddress = student.address || "Not Provided";
+  // Format student code with dash after first two letters (e.g., "ST-U-123ABC")
+  const formatStudentCode = (code: string) => {
+    const cleaned = code.replace(/-/g, "");
+    if (cleaned.length <= 2) return cleaned;
+    return `${cleaned.substring(0, 2)}-${cleaned.substring(2)}`;
+  };
 
   const formatDate = (date: any) => {
-    if (!date) return "Not Provided";
+    if (!date) return "";
     try {
       const d = new Date(date);
       return d.toLocaleDateString("en-US", {
@@ -129,33 +136,39 @@ export const StudentIdCardPage: React.FC = () => {
     }
   };
 
-  const formattedDOB = formatDate(studentDOB);
+  const formattedDOB = formatDate(student.dateOfBirth);
+  const initials =
+    student.name
+      ?.split(" ")
+      .map((n) => n.charAt(0))
+      .join("")
+      .toUpperCase() || "?";
 
   return (
     <div
       className={`min-h-screen py-8 px-4 ${
-        isDark ? "bg-slate-950" : "bg-slate-100"
+        isDark ? "bg-slate-950" : "bg-gradient-to-br from-slate-50 to-blue-50"
       }`}
     >
-      <div className="max-w-5xl mx-auto">
-        {/* Header Controls */}
+      <div className="max-w-7xl mx-auto">
+        {/* Header with Controls */}
         <div className="flex justify-between items-center mb-8">
           <Button
             variant="ghost"
             onClick={() => navigate("/students")}
-            className="gap-2"
+            className="gap-2 text-base"
           >
-            <ArrowLeft className="w-4 h-4" />
-            Back
+            <ArrowLeft className="w-5 h-5" />
+            Back to Students
           </Button>
           <div className="flex gap-3">
             <Button onClick={handlePrint} variant="outline" className="gap-2">
               <Printer className="w-4 h-4" />
-              Print
+              Print Card
             </Button>
             <Button
               onClick={handleDownload}
-              className="gap-2 bg-blue-600 hover:bg-blue-700"
+              className="gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
             >
               <Download className="w-4 h-4" />
               Download
@@ -163,213 +176,321 @@ export const StudentIdCardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Main Container */}
-        <div className="flex justify-center items-start gap-8">
-          {/* ID Card */}
-          <div
-            className={`${finalCardClass} rounded-2xl overflow-hidden flex-shrink-0`}
-            style={{
-              width: `${cardWidth}px`,
-              height: `${cardHeight}px`,
-            }}
-          >
-            {/* Premium Card Content */}
-            <div className="h-full flex flex-col relative overflow-hidden">
-              {/* Decorative Top Accent */}
-              <div className="h-2 bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600"></div>
+        {/* Main Container - Two Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column - ID Card (3D Premium with Glowing Edge) */}
+          <div className="lg:col-span-1 flex justify-center print:flex print:justify-center">
+            <style>{`
+              @keyframes glow {
+                0%, 100% {
+                  box-shadow: 0 0 20px rgba(59, 130, 246, 0.5), 0 0 40px rgba(139, 92, 246, 0.3), inset 0 0 20px rgba(59, 130, 246, 0.1);
+                }
+                50% {
+                  box-shadow: 0 0 30px rgba(139, 92, 246, 0.6), 0 0 60px rgba(236, 72, 153, 0.4), inset 0 0 30px rgba(139, 92, 246, 0.15);
+                }
+              }
+              @keyframes slideUp {
+                from {
+                  opacity: 0;
+                  transform: translateY(10px);
+                }
+                to {
+                  opacity: 1;
+                  transform: translateY(0);
+                }
+              }
+              .card-glow {
+                animation: glow 3s ease-in-out infinite, slideUp 0.6s ease-out;
+              }
+            `}</style>
+            <div
+              className={`${
+                isDark
+                  ? "bg-slate-900 border-slate-700"
+                  : "bg-white border-slate-200"
+              } rounded-3xl overflow-hidden border-2 flex-shrink-0 transition-transform duration-300 print:shadow-lg card-glow`}
+              style={{
+                width: `${cardWidth}px`,
+                height: `${cardHeight}px`,
+              }}
+            >
+              {/* Card Content */}
+              <div className="h-full flex flex-col relative">
+                {/* Top Accent Bar - Premium */}
+                <div className="h-2 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 shadow-xl relative overflow-hidden"></div>
 
-              {/* Header Section */}
-              <div
-                className={`px-6 pt-6 pb-4 ${
-                  isDark
-                    ? "bg-gradient-to-br from-slate-800 to-slate-900"
-                    : "bg-gradient-to-br from-blue-50 to-slate-50"
-                } border-b ${isDark ? "border-slate-700" : "border-slate-200"}`}
-              >
-                <div className="text-center">
-                  <h1
-                    className={`text-sm font-bold tracking-widest ${
+                {/* School Header - Elegant */}
+                <div
+                  className={`px-6 pt-5 pb-3 text-center ${
+                    isDark
+                      ? "bg-gradient-to-b from-slate-800 via-slate-800 to-slate-900"
+                      : "bg-gradient-to-b from-slate-100 via-blue-50 to-white"
+                  }`}
+                >
+                  <p
+                    className={`text-xs font-bold tracking-widest ${
                       isDark ? "text-blue-300" : "text-blue-700"
                     }`}
                   >
                     {schoolName}
-                  </h1>
+                  </p>
                   <p
-                    className={`text-xs ${
-                      isDark ? "text-slate-400" : "text-slate-500"
+                    className={`text-xs mt-1.5 font-medium tracking-wider ${
+                      isDark ? "text-slate-400" : "text-slate-600"
                     }`}
                   >
-                    Student Identification Card
+                    OFFICIAL STUDENT ID
                   </p>
                 </div>
-              </div>
 
-              {/* Photo Section with Premium Frame */}
-              <div className="px-6 pt-6 pb-4">
-                <div className="relative w-24 h-28 mx-auto">
-                  {/* Decorative Frame */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl p-1 shadow-lg">
+                {/* Class & Roll Number Info Banner - Enhanced */}
+                <div
+                  className={`px-4 py-3 flex justify-around items-center border-b ${
+                    isDark
+                      ? "bg-slate-800 border-slate-700 bg-opacity-50"
+                      : "bg-gradient-to-r from-blue-50 via-purple-50 to-blue-50 border-slate-200"
+                  }`}
+                >
+                  {student.className && (
+                    <div className="text-center flex-1">
+                      <p
+                        className={`text-xs font-semibold uppercase tracking-wider ${
+                          isDark ? "text-slate-400" : "text-slate-600"
+                        }`}
+                      >
+                        Class
+                      </p>
+                      <p
+                        className={`text-sm font-bold ${
+                          isDark
+                            ? "text-blue-300"
+                            : "text-blue-700"
+                        }`}
+                      >
+                        {student.className}
+                      </p>
+                    </div>
+                  )}
+                  {student.rollNumber && (
                     <div
-                      className={`w-full h-full rounded-lg ${
-                        isDark ? "bg-slate-800" : "bg-white"
-                      } flex items-center justify-center`}
+                      className={`h-8 w-px ${
+                        isDark ? "bg-slate-700" : "bg-slate-300"
+                      }`}
+                    ></div>
+                  )}
+                  {student.rollNumber && (
+                    <div className="text-center flex-1">
+                      <p
+                        className={`text-xs font-semibold uppercase tracking-wider ${
+                          isDark ? "text-slate-400" : "text-slate-600"
+                        }`}
+                      >
+                        Roll No.
+                      </p>
+                      <p
+                        className={`text-sm font-bold ${
+                          isDark
+                            ? "text-purple-300"
+                            : "text-purple-700"
+                        }`}
+                      >
+                        {student.rollNumber}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Student Photo Section - Elegant Spacing */}
+                <div className="flex-1 px-4 py-6 flex flex-col items-center justify-center">
+                  {/* Premium Photo Frame - Larger and prominent */}
+                  <div className="relative w-full max-w-xs aspect-square">
+                    {/* Main Photo Container with gradient border and glow */}
+                    <div
+                      className={`absolute inset-0 rounded-3xl overflow-hidden shadow-2xl border-2`}
+                      style={{
+                        background: isDark
+                          ? "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)"
+                          : "linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%)",
+                        borderImage: "linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899) 1",
+                        border: "3px solid",
+                      }}
                     >
                       {student.avatar && !imageError ? (
                         <img
                           src={student.avatar}
                           alt={student.name}
-                          className="w-full h-full rounded-lg object-cover"
+                          className="w-full h-full object-cover"
                           onError={() => {
                             console.error(
-                              "Failed to load avatar from:",
+                              "Avatar failed to load from:",
                               student.avatar
                             );
                             setImageError(true);
                           }}
-                          onLoad={() =>
+                          onLoad={() => {
                             console.log(
                               "Avatar loaded successfully from:",
                               student.avatar
-                            )
-                          }
+                            );
+                          }}
                         />
                       ) : (
                         <div
-                          className={`w-full h-full rounded-lg flex items-center justify-center text-2xl font-bold ${
+                          className={`w-full h-full flex items-center justify-center text-6xl font-bold ${
                             isDark
-                              ? "bg-slate-700 text-blue-300"
-                              : "bg-blue-100 text-blue-600"
+                              ? "bg-gradient-to-br from-slate-700 to-slate-800 text-blue-300"
+                              : "bg-gradient-to-br from-blue-200 to-purple-100 text-blue-600"
                           }`}
                         >
-                          {student.name?.charAt(0).toUpperCase() || "?"}
+                          {initials}
                         </div>
                       )}
                     </div>
                   </div>
-                </div>
-              </div>
 
-              {/* Student Info Section */}
-              <div
-                className={`px-6 py-4 flex-grow ${
-                  isDark ? "bg-slate-900" : "bg-white"
-                }`}
-              >
-                <div className="space-y-3">
-                  {/* Name */}
-                  <div>
-                    <p
-                      className={`text-xs font-semibold tracking-wide ${
-                        isDark ? "text-slate-400" : "text-slate-500"
-                      }`}
-                    >
-                      FULL NAME
-                    </p>
-                    <p
-                      className={`text-sm font-bold truncate ${
-                        isDark ? "text-white" : "text-slate-900"
-                      }`}
-                    >
-                      {student.name || "N/A"}
-                    </p>
-                  </div>
-
-                  {/* Student Code */}
-                  <div>
-                    <p
-                      className={`text-xs font-semibold tracking-wide ${
-                        isDark ? "text-slate-400" : "text-slate-500"
-                      }`}
-                    >
-                      STUDENT CODE
-                    </p>
-                    <p
-                      className={`text-sm font-mono font-bold ${
-                        isDark ? "text-blue-300" : "text-blue-700"
-                      }`}
-                    >
-                      {studentCode}
-                    </p>
-                  </div>
-
-                  {/* Class & Roll */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <p
-                        className={`text-xs font-semibold tracking-wide ${
-                          isDark ? "text-slate-400" : "text-slate-500"
-                        }`}
-                      >
-                        CLASS
-                      </p>
-                      <p
-                        className={`text-sm font-bold ${
-                          isDark ? "text-white" : "text-slate-900"
-                        }`}
-                      >
-                        {className}
-                      </p>
-                    </div>
-                    <div>
-                      <p
-                        className={`text-xs font-semibold tracking-wide ${
-                          isDark ? "text-slate-400" : "text-slate-500"
-                        }`}
-                      >
-                        ROLL
-                      </p>
-                      <p
-                        className={`text-sm font-bold ${
-                          isDark ? "text-white" : "text-slate-900"
-                        }`}
-                      >
-                        {rollNumber}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Footer with QR Code */}
-              <div
-                className={`px-6 py-4 flex items-center justify-between border-t ${
-                  isDark
-                    ? "bg-slate-800 border-slate-700"
-                    : "bg-slate-50 border-slate-200"
-                }`}
-              >
-                <div className="flex-grow">
-                  <p
-                    className={`text-xs ${
-                      isDark ? "text-slate-400" : "text-slate-500"
+                  {/* Student Code Badge - Elegant */}
+                  <div
+                    className={`mt-3 px-5 py-2 rounded-full text-xs font-mono font-bold tracking-wider ${
+                      isDark
+                        ? "bg-blue-900 bg-opacity-60 text-blue-200 border border-blue-600"
+                        : "bg-blue-100 bg-opacity-70 text-blue-700 border border-blue-300"
                     }`}
                   >
-                    Valid: {new Date().getFullYear()} -{" "}
-                    {new Date().getFullYear() + 1}
-                  </p>
+                    {formatStudentCode(studentCode)}
+                  </div>
                 </div>
-                <img
-                  src={qrCodeDataUrl}
-                  alt="QR Code"
-                  className="w-16 h-16 rounded-lg border-2"
-                  style={{
-                    borderColor: isDark ? "#475569" : "#e2e8f0",
-                  }}
-                />
+
+                {/* QR Code Section - Premium Bottom */}
+                <div
+                  className={`px-4 py-6 flex flex-col items-center gap-3 border-t ${
+                    isDark
+                      ? "border-slate-700 border-opacity-50 bg-gradient-to-b from-slate-800 via-slate-800 to-slate-900"
+                      : "border-slate-200 bg-gradient-to-b from-slate-50 via-blue-50 to-slate-50"
+                  }`}
+                >
+                  {/* QR Code - Premium with Elegant Frame */}
+                  <div
+                    className={`p-3 rounded-2xl backdrop-blur-sm ${
+                      isDark
+                        ? "bg-white bg-opacity-95 border-2 border-blue-500 shadow-2xl"
+                        : "bg-white border-2 border-blue-400 shadow-2xl"
+                    }`}
+                    style={{
+                      boxShadow: isDark
+                        ? "0 0 20px rgba(59, 130, 246, 0.6), 0 0 40px rgba(139, 92, 246, 0.2)"
+                        : "0 0 20px rgba(59, 130, 246, 0.5), 0 0 40px rgba(139, 92, 246, 0.15)",
+                    }}
+                  >
+                    <img
+                      src={qrCodeDataUrl}
+                      alt="QR Code"
+                      className="w-32 h-32 rounded-lg"
+                    />
+                  </div>
+                  <div
+                    className={`text-center ${
+                      isDark ? "text-slate-400" : "text-slate-600"
+                    }`}
+                  >
+                    <p className="text-xs font-medium">Valid {new Date().getFullYear()}-{new Date().getFullYear() + 1}</p>
+                    <p className="text-xs mt-0.5 opacity-75">Scan for Details</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Information Panel - Right Side */}
-          <div className="flex-1 space-y-4 max-w-sm print:hidden">
-            {/* Card Title */}
-            <h2
-              className={`text-2xl font-bold mb-6 ${
-                isDark ? "text-white" : "text-slate-900"
-              }`}
-            >
-              Student Details
-            </h2>
+          {/* Right Column - Student Details */}
+          <div className="lg:col-span-2 print:hidden space-y-6">
+            {/* Title Section */}
+            <div>
+              <h1
+                className={`text-4xl font-bold ${
+                  isDark ? "text-white" : "text-slate-900"
+                }`}
+              >
+                {student.name}
+              </h1>
+              <p
+                className={`text-lg mt-2 ${
+                  isDark ? "text-slate-400" : "text-slate-600"
+                }`}
+              >
+                Student ID:{" "}
+                <span className="font-mono font-bold">{formatStudentCode(studentCode)}</span>
+              </p>
+            </div>
+
+            {/* Academic Information */}
+            {(student.className || student.rollNumber) && (
+              <Card
+                className={`${
+                  isDark
+                    ? "bg-slate-800 border-slate-700"
+                    : "bg-white border-slate-200"
+                } hover:shadow-lg transition-shadow`}
+              >
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3 mb-5">
+                    <div
+                      className={`p-3 rounded-lg ${
+                        isDark
+                          ? "bg-blue-900 text-blue-300"
+                          : "bg-blue-100 text-blue-600"
+                      }`}
+                    >
+                      <GraduationCap className="w-6 h-6" />
+                    </div>
+                    <h2
+                      className={`text-lg font-bold ${
+                        isDark ? "text-white" : "text-slate-900"
+                      }`}
+                    >
+                      Academic Information
+                    </h2>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-6">
+                    {student.className && (
+                      <div>
+                        <p
+                          className={`text-sm font-semibold uppercase tracking-wide ${
+                            isDark ? "text-slate-400" : "text-slate-600"
+                          }`}
+                        >
+                          Class
+                        </p>
+                        <p
+                          className={`text-xl font-bold mt-2 ${
+                            isDark ? "text-white" : "text-slate-900"
+                          }`}
+                        >
+                          {student.className}
+                        </p>
+                      </div>
+                    )}
+                    {student.rollNumber && (
+                      <div>
+                        <p
+                          className={`text-sm font-semibold uppercase tracking-wide ${
+                            isDark ? "text-slate-400" : "text-slate-600"
+                          }`}
+                        >
+                          Roll Number
+                        </p>
+                        <p
+                          className={`text-xl font-bold mt-2 ${
+                            isDark ? "text-white" : "text-slate-900"
+                          }`}
+                        >
+                          {student.rollNumber}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Personal Information */}
             <Card
@@ -377,266 +498,269 @@ export const StudentIdCardPage: React.FC = () => {
                 isDark
                   ? "bg-slate-800 border-slate-700"
                   : "bg-white border-slate-200"
-              }`}
+              } hover:shadow-lg transition-shadow`}
             >
               <CardContent className="pt-6">
-                <div className="space-y-4">
-                  <div className="flex gap-3">
-                    <User
-                      className={`w-5 h-5 flex-shrink-0 ${
-                        isDark ? "text-blue-400" : "text-blue-600"
-                      }`}
-                    />
+                <div className="flex items-center gap-3 mb-5">
+                  <div
+                    className={`p-3 rounded-lg ${
+                      isDark
+                        ? "bg-purple-900 text-purple-300"
+                        : "bg-purple-100 text-purple-600"
+                    }`}
+                  >
+                    <User className="w-6 h-6" />
+                  </div>
+                  <h2
+                    className={`text-lg font-bold ${
+                      isDark ? "text-white" : "text-slate-900"
+                    }`}
+                  >
+                    Personal Details
+                  </h2>
+                </div>
+
+                <div className="grid grid-cols-2 gap-6">
+                  {student.dateOfBirth && (
                     <div>
                       <p
-                        className={`text-xs font-semibold ${
-                          isDark ? "text-slate-400" : "text-slate-500"
+                        className={`text-sm font-semibold uppercase tracking-wide ${
+                          isDark ? "text-slate-400" : "text-slate-600"
                         }`}
                       >
-                        FULL NAME
+                        Date of Birth
                       </p>
                       <p
-                        className={`text-sm font-medium ${
+                        className={`text-lg font-bold mt-2 flex items-center gap-2 ${
                           isDark ? "text-white" : "text-slate-900"
                         }`}
                       >
-                        {student.name || "N/A"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3">
-                    <Code
-                      className={`w-5 h-5 flex-shrink-0 ${
-                        isDark ? "text-purple-400" : "text-purple-600"
-                      }`}
-                    />
-                    <div>
-                      <p
-                        className={`text-xs font-semibold ${
-                          isDark ? "text-slate-400" : "text-slate-500"
-                        }`}
-                      >
-                        STUDENT CODE
-                      </p>
-                      <p
-                        className={`text-sm font-mono ${
-                          isDark ? "text-purple-300" : "text-purple-700"
-                        }`}
-                      >
-                        {studentCode}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3">
-                    <Calendar
-                      className={`w-5 h-5 flex-shrink-0 ${
-                        isDark ? "text-pink-400" : "text-pink-600"
-                      }`}
-                    />
-                    <div>
-                      <p
-                        className={`text-xs font-semibold ${
-                          isDark ? "text-slate-400" : "text-slate-500"
-                        }`}
-                      >
-                        DATE OF BIRTH
-                      </p>
-                      <p
-                        className={`text-sm font-medium ${
-                          isDark ? "text-white" : "text-slate-900"
-                        }`}
-                      >
+                        <Calendar className="w-4 h-4 opacity-60" />
                         {formattedDOB}
                       </p>
                     </div>
-                  </div>
-
-                  <div className="flex gap-3">
-                    <ShieldCheck
-                      className={`w-5 h-5 flex-shrink-0 ${
-                        isDark ? "text-green-400" : "text-green-600"
-                      }`}
-                    />
-                    <div>
-                      <p
-                        className={`text-xs font-semibold ${
-                          isDark ? "text-slate-400" : "text-slate-500"
-                        }`}
-                      >
-                        CLASS
-                      </p>
-                      <p
-                        className={`text-sm font-medium ${
-                          isDark ? "text-white" : "text-slate-900"
-                        }`}
-                      >
-                        {className}
-                      </p>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
 
             {/* Contact Information */}
-            <Card
-              className={`${
-                isDark
-                  ? "bg-slate-800 border-slate-700"
-                  : "bg-white border-slate-200"
-              }`}
-            >
-              <CardContent className="pt-6">
-                <h3
-                  className={`text-sm font-bold mb-4 flex items-center gap-2 ${
-                    isDark ? "text-white" : "text-slate-900"
-                  }`}
-                >
-                  <Sparkles className="w-4 h-4" />
-                  Contact Information
-                </h3>
-                <div className="space-y-3">
-                  <div className="flex gap-3">
-                    <Mail
-                      className={`w-5 h-5 flex-shrink-0 ${
-                        isDark ? "text-blue-400" : "text-blue-600"
+            {(student.email || student.phone || student.address) && (
+              <Card
+                className={`${
+                  isDark
+                    ? "bg-slate-800 border-slate-700"
+                    : "bg-white border-slate-200"
+                } hover:shadow-lg transition-shadow`}
+              >
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3 mb-5">
+                    <div
+                      className={`p-3 rounded-lg ${
+                        isDark
+                          ? "bg-green-900 text-green-300"
+                          : "bg-green-100 text-green-600"
                       }`}
-                    />
-                    <div className="min-w-0">
-                      <p
-                        className={`text-xs font-semibold ${
-                          isDark ? "text-slate-400" : "text-slate-500"
-                        }`}
-                      >
-                        EMAIL
-                      </p>
-                      <p
-                        className={`text-sm truncate ${
-                          isDark ? "text-white" : "text-slate-900"
-                        }`}
-                      >
-                        {studentEmail}
-                      </p>
+                    >
+                      <Phone className="w-6 h-6" />
                     </div>
+                    <h2
+                      className={`text-lg font-bold ${
+                        isDark ? "text-white" : "text-slate-900"
+                      }`}
+                    >
+                      Contact Information
+                    </h2>
                   </div>
 
-                  <div className="flex gap-3">
-                    <MapPin
-                      className={`w-5 h-5 flex-shrink-0 ${
-                        isDark ? "text-red-400" : "text-red-600"
-                      }`}
-                    />
-                    <div className="min-w-0">
-                      <p
-                        className={`text-xs font-semibold ${
-                          isDark ? "text-slate-400" : "text-slate-500"
-                        }`}
-                      >
-                        ADDRESS
-                      </p>
-                      <p
-                        className={`text-sm line-clamp-2 ${
-                          isDark ? "text-white" : "text-slate-900"
-                        }`}
-                      >
-                        {studentAddress}
-                      </p>
-                    </div>
+                  <div className="space-y-5">
+                    {student.email && (
+                      <div className="flex gap-3">
+                        <Mail
+                          className={`w-5 h-5 mt-1 flex-shrink-0 ${
+                            isDark ? "text-blue-400" : "text-blue-600"
+                          }`}
+                        />
+                        <div>
+                          <p
+                            className={`text-sm font-semibold uppercase tracking-wide ${
+                              isDark ? "text-slate-400" : "text-slate-600"
+                            }`}
+                          >
+                            Email
+                          </p>
+                          <p
+                            className={`text-sm mt-1 break-all ${
+                              isDark ? "text-white" : "text-slate-900"
+                            }`}
+                          >
+                            {student.email}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {student.phone && (
+                      <div className="flex gap-3">
+                        <Smartphone
+                          className={`w-5 h-5 mt-1 flex-shrink-0 ${
+                            isDark ? "text-green-400" : "text-green-600"
+                          }`}
+                        />
+                        <div>
+                          <p
+                            className={`text-sm font-semibold uppercase tracking-wide ${
+                              isDark ? "text-slate-400" : "text-slate-600"
+                            }`}
+                          >
+                            Phone
+                          </p>
+                          <p
+                            className={`text-sm mt-1 ${
+                              isDark ? "text-white" : "text-slate-900"
+                            }`}
+                          >
+                            {student.phone}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {student.address && (
+                      <div className="flex gap-3">
+                        <MapPin
+                          className={`w-5 h-5 mt-1 flex-shrink-0 ${
+                            isDark ? "text-red-400" : "text-red-600"
+                          }`}
+                        />
+                        <div>
+                          <p
+                            className={`text-sm font-semibold uppercase tracking-wide ${
+                              isDark ? "text-slate-400" : "text-slate-600"
+                            }`}
+                          >
+                            Address
+                          </p>
+                          <p
+                            className={`text-sm mt-1 leading-relaxed ${
+                              isDark ? "text-white" : "text-slate-900"
+                            }`}
+                          >
+                            {student.address}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Guardian Information */}
-            <Card
-              className={`${
+            {(student.guardianName || student.guardianPhone) && (
+              <Card
+                className={`${
+                  isDark
+                    ? "bg-slate-800 border-slate-700"
+                    : "bg-white border-slate-200"
+                } hover:shadow-lg transition-shadow`}
+              >
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3 mb-5">
+                    <div
+                      className={`p-3 rounded-lg ${
+                        isDark
+                          ? "bg-orange-900 text-orange-300"
+                          : "bg-orange-100 text-orange-600"
+                      }`}
+                    >
+                      <Users className="w-6 h-6" />
+                    </div>
+                    <h2
+                      className={`text-lg font-bold ${
+                        isDark ? "text-white" : "text-slate-900"
+                      }`}
+                    >
+                      Guardian Information
+                    </h2>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-6">
+                    {student.guardianName && (
+                      <div>
+                        <p
+                          className={`text-sm font-semibold uppercase tracking-wide ${
+                            isDark ? "text-slate-400" : "text-slate-600"
+                          }`}
+                        >
+                          Guardian Name
+                        </p>
+                        <p
+                          className={`text-lg font-bold mt-2 ${
+                            isDark ? "text-white" : "text-slate-900"
+                          }`}
+                        >
+                          {student.guardianName}
+                        </p>
+                      </div>
+                    )}
+
+                    {student.guardianPhone && (
+                      <div>
+                        <p
+                          className={`text-sm font-semibold uppercase tracking-wide ${
+                            isDark ? "text-slate-400" : "text-slate-600"
+                          }`}
+                        >
+                          Guardian Phone
+                        </p>
+                        <p
+                          className={`text-lg font-bold mt-2 ${
+                            isDark ? "text-white" : "text-slate-900"
+                          }`}
+                        >
+                          {student.guardianPhone}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Status Badge */}
+            <div
+              className={`rounded-2xl p-6 border-2 border-dashed ${
                 isDark
                   ? "bg-slate-800 border-slate-700"
-                  : "bg-white border-slate-200"
+                  : "bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200"
               }`}
             >
-              <CardContent className="pt-6">
-                <h3
-                  className={`text-sm font-bold mb-4 flex items-center gap-2 ${
-                    isDark ? "text-white" : "text-slate-900"
+              <div className="flex items-center gap-3">
+                <ShieldCheck
+                  className={`w-8 h-8 ${
+                    isDark ? "text-green-400" : "text-green-600"
                   }`}
-                >
-                  <Star className="w-4 h-4" />
-                  Guardian Information
-                </h3>
-                <div className="space-y-3">
-                  <div className="flex gap-3">
-                    <User
-                      className={`w-5 h-5 flex-shrink-0 ${
-                        isDark ? "text-yellow-400" : "text-yellow-600"
-                      }`}
-                    />
-                    <div>
-                      <p
-                        className={`text-xs font-semibold ${
-                          isDark ? "text-slate-400" : "text-slate-500"
-                        }`}
-                      >
-                        GUARDIAN NAME
-                      </p>
-                      <p
-                        className={`text-sm font-medium ${
-                          isDark ? "text-white" : "text-slate-900"
-                        }`}
-                      >
-                        {guardianName}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3">
-                    <Smartphone
-                      className={`w-5 h-5 flex-shrink-0 ${
-                        isDark ? "text-cyan-400" : "text-cyan-600"
-                      }`}
-                    />
-                    <div>
-                      <p
-                        className={`text-xs font-semibold ${
-                          isDark ? "text-slate-400" : "text-slate-500"
-                        }`}
-                      >
-                        PHONE NUMBER
-                      </p>
-                      <p
-                        className={`text-sm font-medium ${
-                          isDark ? "text-white" : "text-slate-900"
-                        }`}
-                      >
-                        {guardianPhone}
-                      </p>
-                    </div>
-                  </div>
+                />
+                <div>
+                  <p
+                    className={`font-bold text-lg ${
+                      isDark ? "text-white" : "text-slate-900"
+                    }`}
+                  >
+                    Official Student ID
+                  </p>
+                  <p
+                    className={`text-sm ${
+                      isDark ? "text-slate-400" : "text-slate-600"
+                    }`}
+                  >
+                    Valid Academic Year {new Date().getFullYear()} -{" "}
+                    {new Date().getFullYear() + 1}
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Security Badge */}
-            <Card
-              className={`bg-gradient-to-br from-blue-600 to-purple-600 border-0 text-white`}
-            >
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-center gap-2">
-                  <ShieldCheck className="w-5 h-5" />
-                  <div className="text-center">
-                    <p className="text-xs font-semibold opacity-90">
-                      OFFICIAL STUDENT ID
-                    </p>
-                    <p className="text-xs opacity-75">
-                      Valid for {new Date().getFullYear()} -{" "}
-                      {new Date().getFullYear() + 1}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -649,6 +773,12 @@ export const StudentIdCardPage: React.FC = () => {
           }
           .print\\:hidden {
             display: none !important;
+          }
+          .print\\:flex {
+            display: flex !important;
+          }
+          .print\\:justify-center {
+            justify-content: center !important;
           }
           .no-print {
             display: none !important;
