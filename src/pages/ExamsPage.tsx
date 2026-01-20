@@ -33,7 +33,7 @@ import {
 } from "../components/ui/select";
 import { Badge } from "../components/ui/badge";
 import { Plus, Calendar, Clock, FileText } from "lucide-react";
-import * as kv from "../utils/backend/api";
+// import * as kv from "../utils/backend/api";
 import { Exam } from "../types";
 import { toast } from "sonner";
 
@@ -55,14 +55,13 @@ export const ExamsPage: React.FC = () => {
 
   const loadExams = async () => {
     try {
-      const examsData = await kv.getByPrefix("exam:");
-      setExams(
-        examsData.sort(
-          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-        )
-      );
+      // TODO: Replace with proper API call when backend is implemented
+      // const examsData = await kv.getByPrefix("exam:");
+      // For now, use empty array
+      setExams([]);
     } catch (error) {
       console.error("Error loading exams:", error);
+      setExams([]);
     }
   };
 
@@ -78,11 +77,17 @@ export const ExamsPage: React.FC = () => {
         duration: parseInt(formData.duration),
       };
 
-      await kv.set(examId, exam);
+      // TODO: Replace with proper API call when backend is implemented
+      // await kv.set(examId, exam);
+
+      // For now, update local state
+      setExams(prev => [exam, ...prev].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      ));
+
       toast.success("Exam created successfully!");
       setIsDialogOpen(false);
       resetForm();
-      loadExams();
     } catch (error) {
       toast.error("Failed to create exam");
     }
@@ -110,11 +115,11 @@ export const ExamsPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6 px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-0">
         <div>
-          <h1>Exams</h1>
-          <p className="text-muted-foreground mt-2">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Exams</h1>
+          <p className="text-sm text-muted-foreground mt-1">
             Manage exams and assessments
           </p>
         </div>
@@ -126,12 +131,12 @@ export const ExamsPage: React.FC = () => {
             }}
         >
           <DialogTrigger asChild>
-            <Button>
+            <Button className="w-full sm:w-auto">
               <Plus className="mr-2 h-4 w-4" />
               Schedule Exam
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="w-full mx-2 sm:mx-0">
             <DialogDescription className="sr-only">Exams dialog</DialogDescription>
             <DialogHeader>
               <DialogTitle>Schedule New Exam</DialogTitle>
@@ -151,7 +156,7 @@ export const ExamsPage: React.FC = () => {
                   required
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-2">
                   <Label>Class</Label>
                   <Select

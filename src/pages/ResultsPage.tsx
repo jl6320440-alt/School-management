@@ -123,29 +123,29 @@ export const ResultsPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6 px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-0">
         <div>
-          <h1>Results & Performance</h1>
-          <p className="text-muted-foreground mt-2">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Results & Performance</h1>
+          <p className="text-sm text-muted-foreground mt-1">
             View and analyze exam results
           </p>
         </div>
-        <Button variant="outline">
+        <Button variant="outline" className="w-full sm:w-auto">
           <Download className="mr-2 h-4 w-4" />
           Export Report Cards
         </Button>
       </div>
 
       <Card className="border-l-4 border-l-purple-500 bg-purple-50 dark:bg-purple-950/20">
-        <CardContent className="p-4">
+        <CardContent className="p-3 sm:p-4">
           <div className="flex items-start gap-3">
-            <Award className="h-5 w-5 text-purple-600 mt-0.5" />
-            <div>
-              <h4 className="text-purple-900 dark:text-purple-100">
+            <Award className="h-5 w-5 text-purple-600 mt-0.5 flex-shrink-0" />
+            <div className="min-w-0">
+              <h4 className="text-purple-900 dark:text-purple-100 font-medium">
                 AI Performance Insight
               </h4>
-              <p className="text-purple-700 dark:text-purple-300 mt-1">
+              <p className="text-purple-700 dark:text-purple-300 mt-1 text-sm">
                 Class average improved by 7% from last semester. Top performers:
                 Alice Johnson (83.25%), Charlie Brown (81.5%). Mathematics shows
                 strongest improvement (+12%).
@@ -155,7 +155,7 @@ export const ResultsPage: React.FC = () => {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">

@@ -96,15 +96,15 @@ export const MessagesPage: React.FC = () => {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
       <div>
-        <h1>Messages</h1>
-        <p className="text-muted-foreground mt-2">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Messages</h1>
+        <p className="text-sm text-muted-foreground mt-1">
           Communicate with teachers, students, and parents
         </p>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-4 h-[600px]">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 h-auto md:h-[600px]">
         {/* Contacts List */}
         <Card className="md:col-span-1">
           <CardHeader>

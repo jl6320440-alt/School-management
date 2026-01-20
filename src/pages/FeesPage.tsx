@@ -31,7 +31,14 @@ import {
   SelectItem,
   SelectTrigger,
 } from "../components/ui/select";
-import { Plus, Edit2, Trash2, TrendingUp, CheckCircle, AlertCircle } from "lucide-react";
+import {
+  Plus,
+  Edit2,
+  Trash2,
+  TrendingUp,
+  CheckCircle,
+  AlertCircle,
+} from "lucide-react";
 import CediSign from "../components/icons/CediSign";
 import * as feeApi from "../utils/backend/feeApi";
 import * as studentApi from "../utils/backend/studentApi";
@@ -62,7 +69,14 @@ export const FeesPage: React.FC = () => {
 
   const [formData, setFormData] = useState({
     student: "",
-    feeType: "tuition" as 'tuition' | 'transport' | 'uniform' | 'books' | 'activities' | 'hostel' | 'other',
+    feeType: "tuition" as
+      | "tuition"
+      | "transport"
+      | "uniform"
+      | "books"
+      | "activities"
+      | "hostel"
+      | "other",
     amount: "",
     dueDate: "",
     notes: "",
@@ -146,7 +160,7 @@ export const FeesPage: React.FC = () => {
         student: fee.studentId,
         feeType: fee.feeType,
         amount: fee.amount.toString(),
-        dueDate: fee.dueDate.split('T')[0],
+        dueDate: fee.dueDate.split("T")[0],
         notes: fee.notes || "",
       });
     } else {
@@ -263,253 +277,292 @@ export const FeesPage: React.FC = () => {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <p className="text-gray-500">Loading fees...</p>
         </div>
       ) : (
         <>
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-semibold">Fee Management</h2>
-            <Button onClick={() => handleOpenDialog()}>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-0">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Fee Management</h1>
+              <p className="text-sm text-muted-foreground mt-1">Track and manage student fees</p>
+            </div>
+            <Button onClick={() => handleOpenDialog()} className="w-full sm:w-auto">
               <Plus className="mr-2 h-4 w-4" /> Add Fee
             </Button>
           </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Collected</p>
-                <h3 className="mt-2 text-2xl font-bold">
-                  {formatCurrency(stats.totalCollected)}
-                </h3>
-                <p className="text-green-600 mt-1 flex items-center gap-1">
-                  <TrendingUp className="h-4 w-4" />
-                  <span>Revenue</span>
-                </p>
-              </div>
-              <CheckCircle className="h-8 w-8 text-green-600" />
-            </div>
-          </CardContent>
-        </Card>
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Collected</p>
+                    <h3 className="mt-2 text-2xl font-bold">
+                      {formatCurrency(stats.totalCollected)}
+                    </h3>
+                    <p className="text-green-600 mt-1 flex items-center gap-1">
+                      <TrendingUp className="h-4 w-4" />
+                      <span>Revenue</span>
+                    </p>
+                  </div>
+                  <CheckCircle className="h-8 w-8 text-green-600" />
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Pending</p>
-                <h3 className="mt-2 text-2xl font-bold">
-                  {formatCurrency(stats.totalPending)}
-                </h3>
-                <p className="text-yellow-600 mt-1">Awaiting Payment</p>
-              </div>
-              <CediSign className="h-8 w-8 text-yellow-600" />
-            </div>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Pending</p>
+                    <h3 className="mt-2 text-2xl font-bold">
+                      {formatCurrency(stats.totalPending)}
+                    </h3>
+                    <p className="text-yellow-600 mt-1">Awaiting Payment</p>
+                  </div>
+                  <CediSign className="h-8 w-8 text-yellow-600" />
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Overdue</p>
-                <h3 className="mt-2 text-2xl font-bold">
-                  {formatCurrency(stats.totalOverdue)}
-                </h3>
-                <p className="text-red-600 mt-1">Requires Action</p>
-              </div>
-              <AlertCircle className="h-8 w-8 text-red-600" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters and Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>All Fees</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-4 mb-4">
-            <Input
-              placeholder="Search student or fee type..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1"
-            />
-            {/* Radix Select requires non-empty values for items; use 'all' sentinel to represent no filter */}
-            <Select value={statusFilter ?? "all"} onValueChange={(v) => setStatusFilter(v === "all" ? null : v)}>
-              <SelectTrigger className="w-40">
-                <span>{statusFilter ? statusFilter : "All Status"}</span>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="paid">Paid</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="overdue">Overdue</SelectItem>
-                <SelectItem value="partial">Partial</SelectItem>
-              </SelectContent>
-            </Select>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Overdue</p>
+                    <h3 className="mt-2 text-2xl font-bold">
+                      {formatCurrency(stats.totalOverdue)}
+                    </h3>
+                    <p className="text-red-600 mt-1">Requires Action</p>
+                  </div>
+                  <AlertCircle className="h-8 w-8 text-red-600" />
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Student</TableHead>
-                <TableHead>Fee Type</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead className="text-right">Paid</TableHead>
-                <TableHead>Due Date</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredFees.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8">
-                    No fees found
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredFees.map((fee) => (
-                  <TableRow key={fee._id}>
-                    <TableCell className="font-medium">{fee.studentName}</TableCell>
-                    <TableCell>{getFeeTypeLabel(fee.feeType)}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(fee.amount)}</TableCell>
-                    <TableCell className="text-right text-green-600">
-                      {formatCurrency(fee.paidAmount)}
-                    </TableCell>
-                    <TableCell>{new Date(fee.dueDate).toLocaleDateString()}</TableCell>
-                    <TableCell>{getStatusBadge(fee.status)}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        {fee.status !== "paid" && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleMarkAsPaid(fee)}
-                          >
-                            Mark Paid
-                          </Button>
-                        )}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleOpenDialog(fee)}
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-red-600 hover:text-red-700"
-                          onClick={() => handleDelete(fee._id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+          {/* Filters and Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>All Fees</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-4 mb-4">
+                <Input
+                  placeholder="Search student or fee type..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="flex-1"
+                />
+                {/* Radix Select requires non-empty values for items; use 'all' sentinel to represent no filter */}
+                <Select
+                  value={statusFilter ?? "all"}
+                  onValueChange={(v) => setStatusFilter(v === "all" ? null : v)}
+                >
+                  <SelectTrigger className="w-40">
+                    <span>{statusFilter ? statusFilter : "All Status"}</span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="paid">Paid</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="overdue">Overdue</SelectItem>
+                    <SelectItem value="partial">Partial</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Student</TableHead>
+                    <TableHead>Fee Type</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="text-right">Paid</TableHead>
+                    <TableHead>Due Date</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                </TableHeader>
+                <TableBody>
+                  {filteredFees.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8">
+                        No fees found
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredFees.map((fee) => (
+                      <TableRow key={fee._id}>
+                        <TableCell className="font-medium">
+                          {fee.studentName}
+                        </TableCell>
+                        <TableCell>{getFeeTypeLabel(fee.feeType)}</TableCell>
+                        <TableCell className="text-right">
+                          {formatCurrency(fee.amount)}
+                        </TableCell>
+                        <TableCell className="text-right text-green-600">
+                          {formatCurrency(fee.paidAmount)}
+                        </TableCell>
+                        <TableCell>
+                          {new Date(fee.dueDate).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>{getStatusBadge(fee.status)}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            {fee.status !== "paid" && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleMarkAsPaid(fee)}
+                              >
+                                Mark Paid
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleOpenDialog(fee)}
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-red-600 hover:text-red-700"
+                              onClick={() => handleDelete(fee._id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
 
-      {/* Add/Edit Fee Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
-          <DialogDescription className="sr-only">Fees dialog</DialogDescription>
-          <DialogHeader>
-            <DialogTitle>{editingFee ? "Edit Fee" : "Add New Fee"}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="student">Student *</Label>
-              <Select value={formData.student} onValueChange={(v) => setFormData({ ...formData, student: v })}>
-                <SelectTrigger>
-                  <span>{students.find((s) => s._id === formData.student)?.name || "Select Student"}</span>
-                </SelectTrigger>
-                <SelectContent>
-                  {students.map((s) => (
-                    <SelectItem key={s._id} value={s._id}>
-                      {s.name} ({s.email})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          {/* Add/Edit Fee Dialog */}
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogContent>
+              <DialogDescription className="sr-only">
+                Fees dialog
+              </DialogDescription>
+              <DialogHeader>
+                <DialogTitle>
+                  {editingFee ? "Edit Fee" : "Add New Fee"}
+                </DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <Label htmlFor="student">Student *</Label>
+                  <Select
+                    value={formData.student}
+                    onValueChange={(v) =>
+                      setFormData({ ...formData, student: v })
+                    }
+                  >
+                    <SelectTrigger>
+                      <span>
+                        {students.find((s) => s._id === formData.student)
+                          ?.name || "Select Student"}
+                      </span>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {students.map((s) => (
+                        <SelectItem key={s._id} value={s._id}>
+                          {s.name} ({s.email})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            <div>
-              <Label htmlFor="feeType">Fee Type *</Label>
-              <Select value={formData.feeType} onValueChange={(v) => setFormData({ ...formData, feeType: v as any })}>
-                <SelectTrigger>
-                  <span>{getFeeTypeLabel(formData.feeType)}</span>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="tuition">Tuition</SelectItem>
-                  <SelectItem value="transport">Transport</SelectItem>
-                  <SelectItem value="uniform">Uniform</SelectItem>
-                  <SelectItem value="books">Books</SelectItem>
-                  <SelectItem value="activities">Activities</SelectItem>
-                  <SelectItem value="hostel">Hostel</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                <div>
+                  <Label htmlFor="feeType">Fee Type *</Label>
+                  <Select
+                    value={formData.feeType}
+                    onValueChange={(v) =>
+                      setFormData({ ...formData, feeType: v as any })
+                    }
+                  >
+                    <SelectTrigger>
+                      <span>{getFeeTypeLabel(formData.feeType)}</span>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="tuition">Tuition</SelectItem>
+                      <SelectItem value="transport">Transport</SelectItem>
+                      <SelectItem value="uniform">Uniform</SelectItem>
+                      <SelectItem value="books">Books</SelectItem>
+                      <SelectItem value="activities">Activities</SelectItem>
+                      <SelectItem value="hostel">Hostel</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            <div>
-              <Label htmlFor="amount">Amount (GHS) *</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="Enter amount"
-                value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-              />
-            </div>
+                <div>
+                  <Label htmlFor="amount">Amount (GHS) *</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="Enter amount"
+                    value={formData.amount}
+                    onChange={(e) =>
+                      setFormData({ ...formData, amount: e.target.value })
+                    }
+                  />
+                </div>
 
-            <div>
-              <Label htmlFor="dueDate">Due Date *</Label>
-              <Input
-                type="date"
-                value={formData.dueDate}
-                onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-              />
-            </div>
+                <div>
+                  <Label htmlFor="dueDate">Due Date *</Label>
+                  <Input
+                    type="date"
+                    value={formData.dueDate}
+                    onChange={(e) =>
+                      setFormData({ ...formData, dueDate: e.target.value })
+                    }
+                  />
+                </div>
 
-            <div>
-              <Label htmlFor="notes">Notes</Label>
-              <Input
-                placeholder="Additional notes (optional)"
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              />
-            </div>
+                <div>
+                  <Label htmlFor="notes">Notes</Label>
+                  <Input
+                    placeholder="Additional notes (optional)"
+                    value={formData.notes}
+                    onChange={(e) =>
+                      setFormData({ ...formData, notes: e.target.value })
+                    }
+                  />
+                </div>
 
-            <div className="flex gap-2 justify-end pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsDialogOpen(false)}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Saving..." : editingFee ? "Update" : "Create"}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+                <div className="flex gap-2 justify-end pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsDialogOpen(false)}
+                    disabled={isSubmitting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting
+                      ? "Saving..."
+                      : editingFee
+                      ? "Update"
+                      : "Create"}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
         </>
       )}
     </div>

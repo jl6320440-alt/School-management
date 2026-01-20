@@ -41,6 +41,65 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
+/* Custom accents for dashboards */
+:root {
+  --accent: #14b8a6; /* teal */
+  --accent-2: #6366f1; /* indigo */
+  --glass-border: rgba(255,255,255,0.25);
+}
+
+/* Entry animations and skeleton loader */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-fade-up {
+  animation: fadeUp 420ms cubic-bezier(.22,.98,.38,.99) both;
+}
+
+.skeleton {
+  background: linear-gradient(90deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.06) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s linear infinite;
+  border-radius: 8px;
+}
+
+/* Glowing status dot */
+@keyframes glowPulse {
+  0% { box-shadow: 0 0 0 rgba(0,0,0,0); transform: scale(1); }
+  50% { box-shadow: 0 0 12px rgba(0,0,0,0.08); transform: scale(1.08); }
+  100% { box-shadow: 0 0 0 rgba(0,0,0,0); transform: scale(1); }
+}
+
+.status-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+}
+
+
+.glow-green {
+  animation: glowPulse 1.6s ease-in-out infinite;
+  box-shadow: 0 0 8px rgba(34,197,94,0.6);
+}
+
+.glow-red {
+  animation: glowPulse 1.6s ease-in-out infinite;
+  box-shadow: 0 0 8px rgba(239,68,68,0.6);
+}
+
+/* removed large/yellow glow variant to restore original design */
+
+/* slightly faster pulse variant if needed */
+.glow-fast { animation-duration: 1s !important; }
+
 .dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);

@@ -75,7 +75,7 @@ export async function createStudent(data: StudentData): Promise<Student> {
   const admissionNumber = data.admissionNumber || data.studentCode || `ADM-${Date.now()}`;
   
   // Build a payload that matches backend expectations (Joi schema).
-  // The backend expects: name, email, password, admissionNumber, dob, parentContact, className, section, guardianName, guardianPhone
+  // The backend expects: name, email, password, admissionNumber, dob, parentContact, classId, section, guardianName, guardianPhone
   const payload: any = {
     name: data.name,
     email: data.email,
@@ -83,7 +83,7 @@ export async function createStudent(data: StudentData): Promise<Student> {
     admissionNumber,
     dob: data.dateOfBirth || data.dob || undefined,
     parentContact: data.parentContact || data.guardianPhone || undefined,
-    className: data.className || data.classId || undefined,
+    classId: data.classId || undefined,
     rollNumber: data.rollNumber || undefined,
     section: data.section || undefined,
     guardianName: data.guardianName || undefined,
@@ -151,9 +151,9 @@ export async function getStudentByCode(code: string): Promise<Student | null> {
 export async function updateStudent(id: string, data: Partial<StudentData>): Promise<Student> {
   const token = getToken();
   if (!token) throw new Error('Not authenticated');
-  // Only send fields allowed by backend update schema: className, section, guardianName, guardianPhone, parentContact, status
+  // Only send fields allowed by backend update schema: classId, section, guardianName, guardianPhone, parentContact, status
   const payload: any = {
-    className: data.className || data.classId || undefined,
+    classId: data.classId || undefined,
     rollNumber: data.rollNumber || undefined,
     section: data.section || undefined,
     guardianName: data.guardianName || undefined,

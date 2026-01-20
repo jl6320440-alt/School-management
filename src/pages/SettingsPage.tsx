@@ -37,32 +37,32 @@ export const SettingsPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
       <div>
-        <h1>Settings</h1>
-        <p className="text-muted-foreground mt-2">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Settings</h1>
+        <p className="text-sm text-muted-foreground mt-1">
           Manage your account settings and preferences
         </p>
       </div>
 
-      <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList>
+      <Tabs defaultValue="profile" className="space-y-4 sm:space-y-6">
+        <TabsList className="w-full sm:w-auto grid grid-cols-2 sm:flex">
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          <TabsTrigger value="system">System</TabsTrigger>
+          <TabsTrigger value="notifications" className="hidden sm:inline-flex">Notifications</TabsTrigger>
+          <TabsTrigger value="system" className="hidden sm:inline-flex">System</TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile">
           <Card>
             <CardHeader>
-              <CardTitle>Profile Information</CardTitle>
+              <CardTitle className="text-base sm:text-lg">Profile Information</CardTitle>
               <CardDescription>
                 Update your personal information
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-2">
                   <Label>Full Name</Label>
                   <Input defaultValue={user?.name} />
@@ -82,7 +82,7 @@ export const SettingsPage: React.FC = () => {
               </div>
               <Separator />
               <div className="flex justify-end">
-                <Button onClick={handleSaveProfile}>Save Changes</Button>
+                <Button onClick={handleSaveProfile} className="w-full sm:w-auto">Save Changes</Button>
               </div>
             </CardContent>
           </Card>

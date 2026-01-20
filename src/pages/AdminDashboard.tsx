@@ -9,7 +9,14 @@ import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import { motion } from "motion/react";
 import { StatCard } from "../components/dashboard/StatCard";
-import { Users, GraduationCap, BookOpen, Star, Mail, Phone } from "lucide-react";
+import {
+  Users,
+  GraduationCap,
+  BookOpen,
+  Star,
+  Mail,
+  Phone,
+} from "lucide-react";
 import CediGlyph from "../components/icons/CediGlyph";
 import { Tilt } from "../components/ui/tilt";
 import { Link, useNavigate } from "react-router-dom";
@@ -89,7 +96,8 @@ export const AdminDashboard: React.FC = () => {
   const [selectedTask, setSelectedTask] = useState<any | null>(null);
   const [assignAssignee, setAssignAssignee] = useState("");
 
-  const apiUrl = (import.meta.env.VITE_API_URL as string) || "http://localhost:5000";
+  const apiUrl =
+    (import.meta.env.VITE_API_URL as string) || "http://localhost:5000";
 
   useEffect(() => {
     setStats({
@@ -109,7 +117,7 @@ export const AdminDashboard: React.FC = () => {
       const res = await fetch(
         `${
           (import.meta.env.VITE_API_URL as string) || ""
-        }/api/admin/top-teacher`
+        }/api/admin/top-teacher`,
       );
       if (!res.ok) throw new Error("no-top-teacher");
       const data = await res.json();
@@ -125,7 +133,7 @@ export const AdminDashboard: React.FC = () => {
       const res = await fetch(
         `${
           (import.meta.env.VITE_API_URL as string) || ""
-        }/api/admin/pending-tasks`
+        }/api/admin/pending-tasks`,
       );
       if (!res.ok) throw new Error("no-pending-tasks");
       const data = await res.json();
@@ -156,7 +164,7 @@ export const AdminDashboard: React.FC = () => {
       toast.success(
         `System health checked: ${
           data.status === "ok" ? "All systems operational" : "Degraded status"
-        }`
+        }`,
       );
     } catch (err) {
       console.error("Health fetch failed:", err);
@@ -217,7 +225,10 @@ export const AdminDashboard: React.FC = () => {
     setPendingTasks((prev) => prev.filter((t) => t.id !== task.id));
     try {
       if (task.id) {
-        const res = await fetch(`${apiUrl}/api/admin/tasks/${encodeURIComponent(task.id)}/complete`, { method: "POST" });
+        const res = await fetch(
+          `${apiUrl}/api/admin/tasks/${encodeURIComponent(task.id)}/complete`,
+          { method: "POST" },
+        );
         if (!res.ok) throw new Error("complete-failed");
       }
       toast.success("Task completed");
@@ -247,16 +258,25 @@ export const AdminDashboard: React.FC = () => {
     }
     try {
       if (selectedTask.id) {
-        const res = await fetch(`${apiUrl}/api/admin/tasks/${encodeURIComponent(selectedTask.id)}/assign`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ assigneeId }),
-        });
+        const res = await fetch(
+          `${apiUrl}/api/admin/tasks/${encodeURIComponent(
+            selectedTask.id,
+          )}/assign`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ assigneeId }),
+          },
+        );
         if (!res.ok) throw new Error("assign-failed");
       }
       toast.success("Task assigned");
       // optionally update tasks list with a note
-      setPendingTasks((prev) => prev.map((t) => (t.id === selectedTask.id ? { ...t, assignedTo: assigneeId } : t)));
+      setPendingTasks((prev) =>
+        prev.map((t) =>
+          t.id === selectedTask.id ? { ...t, assignedTo: assigneeId } : t,
+        ),
+      );
     } catch (err) {
       console.error(err);
       toast.error("Failed to assign task");
@@ -277,7 +297,10 @@ export const AdminDashboard: React.FC = () => {
     const prev = topTeacher;
     setTopTeacher((t: any) => ({ ...t, featured: true }));
     try {
-      const res = await fetch(`${apiUrl}/api/admin/teachers/${encodeURIComponent(teacherId)}/feature`, { method: "POST" });
+      const res = await fetch(
+        `${apiUrl}/api/admin/teachers/${encodeURIComponent(teacherId)}/feature`,
+        { method: "POST" },
+      );
       if (!res.ok) throw new Error("feature-failed");
       toast.success("Teacher featured");
     } catch (err) {
@@ -288,18 +311,18 @@ export const AdminDashboard: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <h1 className="text-2xl font-semibold">Admin Dashboard</h1>
-        <p className="text-muted-foreground mt-1">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Admin Dashboard</h1>
+        <p className="text-sm text-muted-foreground mt-1">
           Overview of school metrics and quick actions.
         </p>
       </motion.div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
           title="Total Students"
           value={stats.totalStudents}
@@ -329,7 +352,7 @@ export const AdminDashboard: React.FC = () => {
         />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         <Card>
           <CardHeader className="flex items-center justify-between">
             <CardTitle>Pending Tasks</CardTitle>
@@ -361,13 +384,32 @@ export const AdminDashboard: React.FC = () => {
                         {t.summary || t.description || ""}
                       </div>
                       {t.assignedTo && (
-                        <div className="text-xs text-muted-foreground">Assigned: {t.assignedTo}</div>
+                        <div className="text-xs text-muted-foreground">
+                          Assigned: {t.assignedTo}
+                        </div>
                       )}
                     </div>
                     <div className="flex-shrink-0 flex items-center gap-2">
-                      <Button size="sm" variant="ghost" onClick={() => openConfirmMarkDone(t)}>Mark Done</Button>
-                      <Button size="sm" variant="outline" onClick={() => openAssignDialog(t)}>Assign</Button>
-                      <Button size="sm" onClick={() => navigate(t.link || "/tasks")}>Open</Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => openConfirmMarkDone(t)}
+                      >
+                        Mark Done
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openAssignDialog(t)}
+                      >
+                        Assign
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => navigate(t.link || "/tasks")}
+                      >
+                        Open
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -393,56 +435,109 @@ export const AdminDashboard: React.FC = () => {
               {healthLoading
                 ? "Checking..."
                 : systemHealth?.status === "ok"
-                ? "Healthy"
-                : systemHealth?.status === "degraded"
-                ? "Degraded"
-                : "Offline"}
+                  ? "Healthy"
+                  : systemHealth?.status === "degraded"
+                    ? "Degraded"
+                    : "Offline"}
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="text-sm">Database Connection</div>
-                <div className="text-sm font-medium flex items-center gap-2">
-                  <span
-                    className={`inline-block w-2 h-2 rounded-full ${
-                      systemHealth?.dbConnected ? "bg-green-500" : "bg-red-500"
-                    }`}
-                  ></span>
-                  {systemHealth?.dbConnected ? "Connected" : "Disconnected"}
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="text-sm">Server Uptime</div>
-                <div className="text-sm font-medium">
-                  {systemHealth?.uptime || "Loading..."}
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="text-sm">Last Checked</div>
-                <div className="text-sm font-medium">
-                  {systemHealth?.lastChecked || "Never"}
-                </div>
-              </div>
-              <div className="border-t pt-3 mt-3 flex gap-2">
-                <Button
-                  size="sm"
-                  onClick={fetchSystemHealth}
-                  disabled={healthLoading}
-                  className="flex-1"
+            <div className="flex items-center gap-4">
+              <div className="flex-shrink-0">
+                <div
+                  style={{
+                    background:
+                      "conic-gradient(var(--accent) 0%, var(--accent-2) 100%)",
+                  }}
+                  className="w-20 h-20 rounded-full p-1"
                 >
-                  {healthLoading ? "Refreshing..." : "Refresh"}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleResetSystemHealth}
-                  disabled={healthLoading}
-                  className="flex-1"
-                >
-                  Reset
-                </Button>
+                  <div className="w-full h-full rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center">
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                        systemHealth?.status === "ok"
+                          ? "bg-green-500/20"
+                          : systemHealth?.status === "degraded"
+                            ? "bg-yellow-400/20"
+                            : "bg-red-500/20"
+                      }`}
+                    >
+                      <div
+                        className={`w-6 h-6 rounded-full ${
+                          systemHealth?.status === "ok"
+                            ? "bg-green-500"
+                            : systemHealth?.status === "degraded"
+                              ? "bg-yellow-400"
+                              : "bg-red-500"
+                        }`}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
               </div>
+
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm text-muted-foreground">Overall</div>
+                    <div className="font-semibold text-lg">
+                      {healthLoading
+                        ? "Checking..."
+                        : systemHealth?.status === "ok"
+                          ? "Operational"
+                          : systemHealth?.status === "degraded"
+                            ? "Degraded"
+                            : "Offline"}
+                    </div>
+                  </div>
+                  <div className="text-sm text-muted-foreground text-right">
+                    <div>Last</div>
+                    <div className="font-medium">
+                      {systemHealth?.lastChecked || "Never"}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-3 grid grid-cols-3 gap-3">
+                  <div className="text-center">
+                    <div className="text-xs text-muted-foreground">DB</div>
+                    <div className="mt-1 font-medium">
+                      {systemHealth?.dbConnected ? "Connected" : "Down"}
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xs text-muted-foreground">Uptime</div>
+                    <div className="mt-1 font-medium">
+                      {systemHealth?.uptime || "-"}
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xs text-muted-foreground">Status</div>
+                    <div className="mt-1 font-medium">
+                      {systemHealth?.status || "-"}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 flex gap-2">
+              <Button
+                size="sm"
+                onClick={fetchSystemHealth}
+                disabled={healthLoading}
+                className="flex-1"
+              >
+                {healthLoading ? "Refreshing..." : "Refresh"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleResetSystemHealth}
+                disabled={healthLoading}
+                className="flex-1"
+              >
+                Reset
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -458,32 +553,61 @@ export const AdminDashboard: React.FC = () => {
                 {topTeacher?.avatar ? (
                   <AvatarImage src={topTeacher.avatar} alt={topTeacher.name} />
                 ) : (
-                  <AvatarFallback>{(topTeacher.name || 'T').slice(0,1)}</AvatarFallback>
+                  <AvatarFallback>
+                    {(topTeacher.name || "T").slice(0, 1)}
+                  </AvatarFallback>
                 )}
               </Avatar>
               <div className="flex-1">
                 <div className="font-semibold flex items-center gap-2">
                   {topTeacher.name}
-                  {topTeacher.featured && (<span className="text-xs px-2 py-0.5 rounded bg-yellow-100 text-yellow-800">Featured</span>)}
+                  {topTeacher.featured && (
+                    <span className="text-xs px-2 py-0.5 rounded bg-yellow-100 text-yellow-800">
+                      Featured
+                    </span>
+                  )}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {topTeacher.subject} · {topTeacher.classes?.join(", ")}
                 </div>
                 <div className="mt-1 flex items-center gap-3 text-sm">
-                  <div className="flex items-center gap-1 text-muted-foreground"><Star className="h-4 w-4 text-yellow-500" />{topTeacher.rating || 4.6}</div>
+                  <div className="flex items-center gap-1 text-muted-foreground">
+                    <Star className="h-4 w-4 text-yellow-500" />
+                    {topTeacher.rating || 4.6}
+                  </div>
                   {topTeacher.email && (
-                    <a className="flex items-center gap-1 text-xs text-muted-foreground" href={`mailto:${topTeacher.email}`}><Mail className="h-4 w-4" />Email</a>
+                    <a
+                      className="flex items-center gap-1 text-xs text-muted-foreground"
+                      href={`mailto:${topTeacher.email}`}
+                    >
+                      <Mail className="h-4 w-4" />
+                      Email
+                    </a>
                   )}
                   {topTeacher.phone && (
-                    <a className="flex items-center gap-1 text-xs text-muted-foreground" href={`tel:${topTeacher.phone}`}><Phone className="h-4 w-4" />Call</a>
+                    <a
+                      className="flex items-center gap-1 text-xs text-muted-foreground"
+                      href={`tel:${topTeacher.phone}`}
+                    >
+                      <Phone className="h-4 w-4" />
+                      Call
+                    </a>
                   )}
                 </div>
                 <div className="mt-2 flex gap-2">
                   <Button size="sm" asChild>
                     <Link to="/teachers">Manage</Link>
                   </Button>
-                  <Button size="sm" variant="outline" onClick={fetchTopTeacher}>Refresh</Button>
-                  <Button size="sm" onClick={() => handleFeatureTeacher(topTeacher?.id)} disabled={topTeacher?.featured}>Feature</Button>
+                  <Button size="sm" variant="outline" onClick={fetchTopTeacher}>
+                    Refresh
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => handleFeatureTeacher(topTeacher?.id)}
+                    disabled={topTeacher?.featured}
+                  >
+                    Feature
+                  </Button>
                 </div>
               </div>
             </div>
@@ -491,7 +615,7 @@ export const AdminDashboard: React.FC = () => {
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
         <Tilt enabled={false} className="overflow-hidden">
           <Card className="overflow-hidden border-t-4 border-t-green-500">
             <CardHeader>
@@ -574,8 +698,8 @@ export const AdminDashboard: React.FC = () => {
                         onClick={() =>
                           navigate(
                             `/students/${encodeURIComponent(
-                              s.id || s._id
-                            )}/id-card`
+                              s.id || s._id,
+                            )}/id-card`,
                           )
                         }
                       >
@@ -599,8 +723,18 @@ export const AdminDashboard: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="mt-4 flex gap-2 justify-end">
-            <Button variant="outline" onClick={() => { setConfirmOpen(false); setSelectedTask(null); }}>Cancel</Button>
-            <Button onClick={() => handleMarkDone(selectedTask)}>Confirm</Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setConfirmOpen(false);
+                setSelectedTask(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={() => handleMarkDone(selectedTask)}>
+              Confirm
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -615,15 +749,26 @@ export const AdminDashboard: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="mt-4 space-y-2">
-            <Input placeholder="Assignee id or email" value={assignAssignee} onChange={(e) => setAssignAssignee(e.target.value)} />
+            <Input
+              placeholder="Assignee id or email"
+              value={assignAssignee}
+              onChange={(e) => setAssignAssignee(e.target.value)}
+            />
             <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => { setAssignOpen(false); setSelectedTask(null); }}>Cancel</Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setAssignOpen(false);
+                  setSelectedTask(null);
+                }}
+              >
+                Cancel
+              </Button>
               <Button onClick={handleAssignConfirm}>Assign</Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
-
     </div>
   );
 };

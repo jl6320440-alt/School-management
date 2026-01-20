@@ -16,12 +16,13 @@ import { UnauthorizedPage } from "./pages/UnauthorizedPage";
 import { StudentsPage } from "./pages/StudentsPage";
 import { StudentIdCardPage } from "./pages/StudentIdCardPage";
 import { TeachersPage } from "./pages/TeachersPage";
-import { ExamsPage } from "./pages/ExamsPage";
+import { ClassesPage } from "./pages/ClassesPage";
 import { FeesPage } from "./pages/FeesPage";
 import { LibraryPage } from "./pages/LibraryPage";
 import { MessagesPage } from "./pages/MessagesPage";
 import { AttendancePage } from "./pages/AttendancePage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { ExamsPage } from "./pages/ExamsPage";
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -110,19 +111,7 @@ const AppRoutes: React.FC = () => {
         element={
           <RoleProtectedRoute allowedRoles={['admin', 'teacher']}>
             <ProtectedRoute>
-              <div className="space-y-6">
-                <div>
-                  <h1>Classes</h1>
-                  <p className="text-muted-foreground mt-2">
-                    Manage classes and subjects
-                  </p>
-                </div>
-                <div className="rounded-lg border border-dashed p-12 text-center">
-                  <p className="text-muted-foreground">
-                    Class management module - Coming soon!
-                  </p>
-                </div>
-              </div>
+              <ClassesPage />
             </ProtectedRoute>
           </RoleProtectedRoute>
         }

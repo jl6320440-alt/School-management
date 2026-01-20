@@ -46,11 +46,14 @@ import { Badge } from "../components/ui/badge";
 import { formatCurrency } from "../utils/formatCurrency";
 import { useNavigate } from "react-router-dom";
 import * as studentApi from "../utils/backend/studentApi";
-import { Student } from "../types";
+import { uploadFile } from "../utils/backend/api";
+import * as classApi from "../utils/backend/classApi";
+import { Student, Class } from "../types";
 import { toast } from "sonner";
 
 const StudentsPage: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
+  const [classes, setClasses] = useState<Class[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
@@ -74,7 +77,7 @@ const StudentsPage: React.FC = () => {
   });
 
   const [selectedStudent, setSelectedStudent] = useState(
-    null as Student | null
+    null as Student | null,
   );
   const navigate = useNavigate();
 
@@ -114,6 +117,7 @@ const StudentsPage: React.FC = () => {
 
   useEffect(() => {
     loadStudents();
+    loadClasses();
     return () => {
       if (previousPreviewRef.current)
         URL.revokeObjectURL(previousPreviewRef.current);
@@ -144,25 +148,42 @@ const StudentsPage: React.FC = () => {
     try {
       const data = await studentApi.listStudents();
       // Map API response to frontend Student type
-      const mapped = data.map((student: any) => ({
-        id: student.id || student._id,
-        studentCode: student.studentCode || '',
-        name: student.name || '',
-        email: student.email || '',
-        classId: student.classId || student.className || '',
-        rollNumber: student.rollNumber || '',
-        dateOfBirth: student.dateOfBirth || student.dob || '',
-        guardianName: student.guardianName || '',
-        guardianPhone: student.guardianPhone || '',
-        address: student.address || '',
-        avatar: student.avatar,
-        status: student.status,
-        enrollmentDate: student.enrollmentDate || new Date().toISOString(),
-      } as Student));
+      const mapped = data.map(
+        (student: any) =>
+          ({
+            id: student.id || student._id,
+            studentCode: student.studentCode || "",
+            name: student.name || "",
+            email: student.email || "",
+            classId: student.classId || student.className || "",
+            rollNumber: student.rollNumber || "",
+            dateOfBirth: student.dateOfBirth || student.dob || "",
+            guardianName: student.guardianName || "",
+            guardianPhone: student.guardianPhone || "",
+            address: student.address || "",
+            avatar: student.avatar,
+            status: student.status,
+            enrollmentDate: student.enrollmentDate || new Date().toISOString(),
+          }) as Student,
+      );
       setStudents(mapped);
     } catch (err) {
       console.error(err);
       toast.error("Failed to load students");
+    }
+  };
+
+  const loadClasses = async () => {
+    try {
+      const data = await classApi.listClasses();
+      const mapped = data.map((cls: any) => ({
+        ...cls,
+        studentCount: cls.studentCount || 0,
+      }));
+      setClasses(mapped);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to load classes");
     }
   };
 
@@ -172,7 +193,7 @@ const StudentsPage: React.FC = () => {
       letters.charAt(Math.floor(Math.random() * letters.length));
     for (let i = 0; i < 50; i++) {
       const code = `${rand()}${rand()}${String(
-        Math.floor(Math.random() * 1000)
+        Math.floor(Math.random() * 1000),
       ).padStart(3, "0")}`;
       if (!existingCodes.has(code)) return code;
     }
@@ -244,6 +265,21 @@ const StudentsPage: React.FC = () => {
     };
     reader.readAsDataURL(file);
   };
+
+  function dataUrlToFile(dataUrl: string, filename = "avatar.png") {
+    const arr = dataUrl.split(",");
+    const mimeMatch = arr[0].match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : "image/png";
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) u8arr[n] = bstr.charCodeAt(n);
+    try {
+      return new File([u8arr], filename, { type: mime });
+    } catch (e) {
+      return new Blob([u8arr], { type: mime });
+    }
+  }
 
   const removeAvatar = () => {
     if (previousPreviewRef.current) {
@@ -391,6 +427,26 @@ const StudentsPage: React.FC = () => {
 
     setIsSubmitting(true);
     try {
+      // If there's an avatar file or data URL, upload it first and get a public URL
+      let avatarUrl: string | undefined = undefined;
+      if (avatarFile) {
+        try {
+          const res = await uploadFile(avatarFile);
+          avatarUrl = (res && (res.publicUrl || (res as any).url)) || undefined;
+        } catch (err) {
+          console.error("Avatar upload failed:", err);
+          toast.error("Avatar upload failed");
+        }
+      } else if (avatarDataUrl && avatarDataUrl.startsWith("data:")) {
+        try {
+          const f = dataUrlToFile(avatarDataUrl);
+          const res = await uploadFile(f as File);
+          avatarUrl = (res && (res.publicUrl || (res as any).url)) || undefined;
+        } catch (err) {
+          console.error("Avatar upload failed:", err);
+          toast.error("Avatar upload failed");
+        }
+      }
       // Build clean payload with only allowed fields
       const studentData = {
         name: formData.name,
@@ -401,15 +457,15 @@ const StudentsPage: React.FC = () => {
         guardianName: formData.guardianName,
         guardianPhone: formData.guardianPhone,
         address: formData.address || undefined,
-        avatar: avatarDataUrl || undefined,
+        avatar: avatarUrl || avatarDataUrl || undefined,
         enrollmentDate:
           editingStudent?.enrollmentDate || new Date().toISOString(),
         studentCode:
           editingStudent?.studentCode ||
           generateStudentCode(
             new Set(
-              students.map((s) => s.studentCode).filter(Boolean) as string[]
-            )
+              students.map((s) => s.studentCode).filter(Boolean) as string[],
+            ),
           ),
       };
 
@@ -419,8 +475,8 @@ const StudentsPage: React.FC = () => {
         toast.success("Student updated!");
       } else {
         // Create new student
-        await studentApi.createStudent(studentData);
-        toast.success("Student added!");
+        const response = await studentApi.createStudent(studentData);
+        toast.success(`Student added — Student ID: ${response.studentCode || response.id}`);
       }
 
       clearDraft();
@@ -447,14 +503,15 @@ const StudentsPage: React.FC = () => {
   });
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">Students</h2>
+    <div className="space-y-4 sm:space-y-6 px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-0">
         <div>
-          <Button onClick={openAddDialog}>
-            <Plus className="mr-2 h-4 w-4" /> Add Student
-          </Button>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Students</h1>
+          <p className="text-sm text-muted-foreground mt-1">Manage student profiles and records</p>
         </div>
+        <Button onClick={openAddDialog} className="w-full sm:w-auto">
+          <Plus className="mr-2 h-4 w-4" /> Add Student
+        </Button>
       </div>
 
       <Dialog
@@ -467,7 +524,9 @@ const StudentsPage: React.FC = () => {
         }}
       >
         <DialogContent className="relative">
-          <DialogDescription className="sr-only">Student form dialog</DialogDescription>
+          <DialogDescription className="sr-only">
+            Student form dialog
+          </DialogDescription>
           {isSubmitting && (
             <div className="absolute inset-0 z-50 bg-white/70 flex items-center justify-center">
               <div className="flex flex-col items-center gap-3">
@@ -573,27 +632,21 @@ const StudentsPage: React.FC = () => {
                   <div className="md:col-span-2">
                     <Label>Class</Label>
                     <Select
-                      value={formData.classId}
+                      value={formData.classId || undefined}
                       onValueChange={(v: string) =>
                         setFormData({ ...formData, classId: v })
                       }
                     >
                       <SelectTrigger className="w-full" />
                       <SelectContent>
-                        <SelectItem value="creche">Creche</SelectItem>
-                        <SelectItem value="nursery-1">Nursery 1</SelectItem>
-                        <SelectItem value="nursery-2">Nursery 2</SelectItem>
-                        <SelectItem value="kg1">KG1</SelectItem>
-                        <SelectItem value="kg2">KG2</SelectItem>
-                        <SelectItem value="grade-1">Grade 1</SelectItem>
-                        <SelectItem value="grade-2">Grade 2</SelectItem>
-                        <SelectItem value="grade-3">Grade 3</SelectItem>
-                        <SelectItem value="grade-4">Grade 4</SelectItem>
-                        <SelectItem value="grade-5">Grade 5</SelectItem>
-                        <SelectItem value="grade-6">Grade 6</SelectItem>
-                        <SelectItem value="grade-7">Grade 7</SelectItem>
-                        <SelectItem value="grade-8">Grade 8</SelectItem>
-                        <SelectItem value="grade-9">Grade 9</SelectItem>
+                        <SelectItem value="__none" disabled>
+                          Select a class
+                        </SelectItem>
+                        {classes.map((cls) => (
+                          <SelectItem key={cls.id} value={cls.id}>
+                            {cls.name} ({cls.code}) - {cls.grade}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -768,8 +821,8 @@ const StudentsPage: React.FC = () => {
                     {isSubmitting
                       ? "Saving..."
                       : editingStudent
-                      ? "Update Student"
-                      : "Add Student"}
+                        ? "Update Student"
+                        : "Add Student"}
                   </Button>
                 )}
               </div>
@@ -778,7 +831,7 @@ const StudentsPage: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <div className="lg:col-span-2">
           <Tilt>
             <Card>
@@ -837,24 +890,12 @@ const StudentsPage: React.FC = () => {
                           </div>
                         </TableCell>
                         <TableCell>{student.rollNumber}</TableCell>
-                        <TableCell>{
-                          {
-                            'creche': 'Creche',
-                            'nursery-1': 'Nursery 1',
-                            'nursery-2': 'Nursery 2',
-                            'kg1': 'KG1',
-                            'kg2': 'KG2',
-                            'grade-1': 'Grade 1',
-                            'grade-2': 'Grade 2',
-                            'grade-3': 'Grade 3',
-                            'grade-4': 'Grade 4',
-                            'grade-5': 'Grade 5',
-                            'grade-6': 'Grade 6',
-                            'grade-7': 'Grade 7',
-                            'grade-8': 'Grade 8',
-                            'grade-9': 'Grade 9',
-                          }[student.classId!] || student.classId || '—'
-                        }</TableCell>
+                        <TableCell>
+                          {classes.find((c) => c.id === student.classId)
+                            ?.grade ||
+                            student.classId ||
+                            "—"}
+                        </TableCell>
                         <TableCell>{student.guardianName}</TableCell>
                         <TableCell>{student.guardianPhone}</TableCell>
                         <TableCell className="text-right">
@@ -992,7 +1033,7 @@ const StudentsPage: React.FC = () => {
                       <span className="text-muted-foreground">Enrolled</span>
                       <span className="font-medium">
                         {new Date(
-                          selectedStudent.enrollmentDate || Date.now()
+                          selectedStudent.enrollmentDate || Date.now(),
                         ).toLocaleDateString()}
                       </span>
                     </div>
@@ -1126,7 +1167,7 @@ const StudentsPage: React.FC = () => {
                   <div className="mt-1">
                     <span className="inline-block px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 text-sm font-medium">
                       {new Date(
-                        selectedStudent.enrollmentDate || Date.now()
+                        selectedStudent.enrollmentDate || Date.now(),
                       ).toLocaleDateString()}
                     </span>
                   </div>

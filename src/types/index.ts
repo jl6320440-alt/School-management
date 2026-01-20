@@ -21,6 +21,7 @@ export interface Student {
 }
 
 export interface Teacher {
+  staffId: string;
   id: string;
   name: string;
   email: string;
@@ -35,11 +36,26 @@ export interface Teacher {
 export interface Class {
   id: string;
   name: string;
-  section: string;
-  grade: number;
+  code: string;
+  grade: string;
+  subject: string;
   teacherId: string;
-  students: string[];
-  subjects: string[];
+  teacher?: {
+    _id: string;
+    name: string;
+    email: string;
+  } | null;
+  capacity: number;
+  studentCount: number;
+  schedule: Array<{
+    day: string;
+    startTime: string;
+    endTime: string;
+  }>;
+  location?: string;
+  status: 'active' | 'archived';
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Subject {

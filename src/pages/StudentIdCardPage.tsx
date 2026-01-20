@@ -146,29 +146,29 @@ export const StudentIdCardPage: React.FC = () => {
 
   return (
     <div
-      className={`min-h-screen py-8 px-4 ${
+      className={`min-h-screen py-4 sm:py-8 px-3 sm:px-4 lg:px-6 ${
         isDark ? "bg-slate-950" : "bg-gradient-to-br from-slate-50 to-blue-50"
       }`}
     >
       <div className="max-w-7xl mx-auto">
         {/* Header with Controls */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 mb-6 sm:mb-8">
           <Button
             variant="ghost"
             onClick={() => navigate("/students")}
-            className="gap-2 text-base"
+            className="gap-2 text-sm sm:text-base w-full sm:w-auto justify-start sm:justify-center"
           >
             <ArrowLeft className="w-5 h-5" />
             Back to Students
           </Button>
-          <div className="flex gap-3">
-            <Button onClick={handlePrint} variant="outline" className="gap-2">
+          <div className="flex gap-2 sm:gap-3 w-full sm:w-auto">
+            <Button onClick={handlePrint} variant="outline" className="gap-2 flex-1 sm:flex-none text-sm sm:text-base">
               <Printer className="w-4 h-4" />
-              Print Card
+              Print
             </Button>
             <Button
               onClick={handleDownload}
-              className="gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+              className="gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 flex-1 sm:flex-none text-sm sm:text-base"
             >
               <Download className="w-4 h-4" />
               Download
@@ -177,7 +177,7 @@ export const StudentIdCardPage: React.FC = () => {
         </div>
 
         {/* Main Container - Two Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
           {/* Left Column - ID Card (3D Premium with Glowing Edge) */}
           <div className="lg:col-span-1 flex justify-center print:flex print:justify-center">
             <style>{`
